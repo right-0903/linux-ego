@@ -54,6 +54,7 @@ With kernel version `6.10-rc3`.
 | USB-C DisplayPort Alt Mode | unsure | unknown for now. Only the main display is available at the initial system bootup. |
 | Video acceleration | unsure | depends on the main display driver status |
 | Virtualisation | x | |
+| Volumn keys | works | |
 | Watchdog | works | |
 | Wi-Fi | works | use the 2.4 GHz band for stability. |
 

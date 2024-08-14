@@ -67,6 +67,22 @@
 		#sound-dai-cells = <1>;
 	};
 
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&vol_up_n>;
+
+		key-vol-up {
+			label = "Volume Up";
+			gpios = <&pmc8280_1_gpios 6 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEUP>;
+			debounce-interval = <15>;
+			linux,can-disable;
+			wakeup-source;
+		};
+	}
+
 	pmic-glink {
 		compatible = "qcom,sc8280xp-pmic-glink", "qcom,pmic-glink";
 
@@ -699,22 +715,6 @@
 	};
 };
 
-//&i2c15 {
-//	status = "okay";
-//	clock-frequency = <400000>;
-//
-//	embedded_controller: ec@38 {
-//		compatible = "huawei,planck-ec";
-//		reg = <0x38>;
-//
-//		interrupts-extended = <&tlmm 26 IRQ_TYPE_LEVEL_LOW>;
-//		wakeup-source;
-//
-//		pinctrl-names = "default";
-//		pinctrl-0 = <&ec_int_default>;
-//	};
-//};
-
 &pcie2a {
 	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
@@ -838,6 +838,7 @@
 
 &pmk8280_pon_resin {
 	status = "okay";
+	linux,code = <KEY_VOLUMEDOWN>;
 };
 
 &pmk8280_rtc {
@@ -1255,6 +1256,17 @@
 
 &lpass_tlmm {
 	status = "okay";
+};
+
+&pmc8280_1_gpios {
+
+	vol_up_n: vol-up-n-state {
+		pins = "gpio6";
+		function = "normal";
+		power-source = <1>;
+		input-enable;
+		bias-pull-up;
+	};
 };
 
 &pmc8280_2_gpios {
