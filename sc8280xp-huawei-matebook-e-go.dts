@@ -12,7 +12,7 @@
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/leds/common.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
-
+#include <dt-bindings/phy/phy.h>
 
 #include "sc8280xp.dtsi"
 #include "sc8280xp-pmics.dtsi"
@@ -535,6 +535,75 @@
 		memory-region = <&gpu_mem>;
 		firmware-name = "qcom/sc8280xp/HUAWEI/gaokun3/qcdxkmsuc8280.mbn";
 	};
+};
+
+&mdss0_dsi0 {
+
+	status = "okay";
+	vdda-supply = <&vreg_l3b>;
+
+	qcom,dual-dsi-mode;
+	qcom,master-dsi;
+	qcom,sync-dual-dsi;
+
+	panel@0 {
+		compatible = "himax,hx83121a";
+		reg = <0>;
+
+		reset-gpios = <&tlmm 38 GPIO_ACTIVE_LOW>;
+
+		pinctrl-0 = <&disp_reset_n>;
+		pinctrl-names = "default";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				panel_in_0: endpoint {
+					remote-endpoint = <&mdss0_dsi0_out>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				panel_in_1: endpoint {
+					remote-endpoint = <&mdss0_dsi1_out>;
+				};
+			};
+
+		};
+	};
+};
+
+&mdss0_dsi0_out {
+	data-lanes = <0 1 2 3>;
+	remote-endpoint = <&panel_in_0>;
+};
+
+&mdss0_dsi0_phy {
+	status = "okay";
+	vdds-supply = <&vreg_l6b>;
+};
+
+&mdss0_dsi1 {
+	status = "okay";
+	vdda-supply = <&vreg_l3b>;
+
+	qcom,dual-dsi-mode;
+	qcom,sync-dual-dsi;
+
+};
+
+&mdss0_dsi1_out {
+	data-lanes = <0 1 2 3>;
+	remote-endpoint = <&panel_in_1>;
+};
+
+&mdss0_dsi1_phy {
+	status = "okay";
+	vdds-supply = <&vreg_l6b>;
 };
 
 &mdss0 {
@@ -1334,6 +1403,14 @@
 &tlmm {
 
 	gpio-reserved-ranges = <70 2>, <74 6>, <83 4>, <125 2>, <128 2>, <154 7>;
+
+	disp_reset_n: disp-reset-n-state {
+		pins = "gpio38";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-high;
+	};
 
 	bt_default: bt-default-state {
 		hstp-bt-en-pins {
