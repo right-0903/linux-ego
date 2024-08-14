@@ -715,6 +715,26 @@
 	};
 };
 
+&i2c15 {
+	clock-frequency = <400000>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c15_default>;
+
+	status = "okay";
+
+	embedded-controller@38 {
+		compatible = "huawei,gaokun-ec";
+		reg = <0x38>;
+
+		interrupts-extended = <&tlmm 107 IRQ_TYPE_LEVEL_LOW>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&ec_int_state>;
+
+
+};
+
 &pcie2a {
 	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
@@ -1359,6 +1379,19 @@
 		pins = "gpio18", "gpio19";
 		function = "qup11";
 		drive-strength = <16>;
+		bias-disable;
+	};
+
+	i2c15_default: i2c15-default-state {
+		pins = "gpio36", "gpio37";
+		function = "qup15";
+		drive-strength = <16>;
+		bias-disable;
+	};
+
+	ec_int_state: ec-int-state-state {
+		pins = "gpio107";
+		function = "gpio";
 		bias-disable;
 	};
 
