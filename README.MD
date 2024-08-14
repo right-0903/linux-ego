@@ -23,18 +23,19 @@ The DT works with steev's latest branch. You should extract the firmwares requir
 
 Refer to [this](https://github.com/jhovold/linux/wiki/X13s) as well.
 
-With kernel version `6.10-rc3`.
+With kernel version `6.10.3`.
 
 | Feature | Status | Note |
 | ------- | ------ | ---- |
 | Audio  | works | see [below](#audio) |
 | Backlight | x |  |
-| Battery | x | Huawei uses a different method from [this](https://github.com/jhovold/linux/commit/5999451b4320ec171cf2d29dc5c479db0901a099). |
+| Battery | works | with my ec driver, cycle count is also supported |
 | Bluetooth | untested |  |
 | Camera | x | |
 | CPUfreq | works | |
 | Display | x | [There](https://linaro.github.io/msm/soc/sc8280xp) is no DSI driver for SC8280XP now. |
 | EFI variables | works | with the [patch](./0001_enable_qseecom.patch). |
+| EC(WIP) | partial | Battery and adapter status, maybe modern standby |
 | Fingerprint reader | x | introduce from [commit](https://github.com/torvalds/linux/commit/d280fe309b88b337a9b26f96b7a9d9aa6d6c3a0f). |
 | GPU | unsure | won't know until we get the display driver working. |
 | Hibernation | x | |
@@ -51,7 +52,7 @@ With kernel version `6.10-rc3`.
 | TPM | x | |
 | USB | works | |
 | USB-PD | unsure | not sure if it triggers the PD protocol |
-| USB-C DisplayPort Alt Mode | unsure | unknown for now. Only the main display is available at the initial system bootup. |
+| USB-C DisplayPort Alt Mode | x | maybe one day EC done |
 | Video acceleration | unsure | depends on the main display driver status |
 | Virtualisation | x | |
 | Volumn keys | works | |
@@ -62,3 +63,5 @@ With kernel version `6.10-rc3`.
 Recently, use the X13s' profile. \
 `sed -i 's/LENOVO.*ThinkPad X13s.*/LENOVO.*ThinkPad X13s.*|HUAWEI.*MateBook E.*\"/' /usr/share/alsa/ucm2/Qualcomm/sc8280xp/sc8280xp.conf`
 
+## Features spoilers
+[battery](battery_features.png)
