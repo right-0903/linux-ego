@@ -5,8 +5,10 @@ This repository contains workarounds for the Huawei Matebook E Go (8cx Gen 3) to
 This project mainly refers to the following projects:
 * [jhovold](https://github.com/jhovold/linux): who adds patches to the mainline to support X13s and SC8280XP (8cx Gen 3).
 * [steev](https://github.com/steev/linux/tree/lenovo-x13s-v6.10-rc3): who maintains the kernel for X13s.
-* [matalama80td3l](https://github.com/matalama80td3l/matebook-e-go-boot-works): who migrates the device tree from X13s' for the Huawei Matebook E Go.
-* [chenxuecong2](https://github.com/chenxuecong2/linux-huawei-matebook-e-go): who migrates the device tree from X13s' for the Huawei Matebook E Go.
+* [Nikita Travkin](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/platform/arm64/acer-aspire1-ec.c): who authored the very first Acer aspire1(sc7180) i2c EC driver.
+* [NewWheat](https://gitlab.com/New-Wheat/linux-for-huawei-matebook-e-2019): who helped me find EC interrupt, and offered one copy of i2c EC driver for reference.
+* [matalama80td3l](https://github.com/matalama80td3l/matebook-e-go-boot-works): who migrated the initial device tree from X13s' for the Huawei Matebook E Go.
+* [chenxuecong2](https://github.com/chenxuecong2/linux-huawei-matebook-e-go): who migrated the initial device tree from X13s' for the Huawei Matebook E Go.
 
 ## Disclaimer
 I am just an amateur, a Linux noob, not educated with formal CS courses. You should never believe what I say below, except this sentence. I am not responsible for your actions; you do this all at your own risk!
@@ -30,7 +32,7 @@ With kernel version `6.10.3`.
 | Audio  | works | see [below](#audio) |
 | Backlight | x |  |
 | Battery | works | with my ec driver, cycle count is also supported |
-| Bluetooth | untested |  |
+| Bluetooth | partial | paired and connected with my android phone, but not for my LinkBuds S |
 | Camera | x | |
 | CPUfreq | works | |
 | Display | x | [There](https://linaro.github.io/msm/soc/sc8280xp) is no DSI driver for SC8280XP now. |
@@ -45,14 +47,14 @@ With kernel version `6.10.3`.
 | PCIe (x4) | works | |
 | Remoteproc | works | |
 | RTC | works | |
-| Suspend | untested |  |
-| Thermal sensors | works | |
+| Suspend | works | s2idle |
+| Thermal sensors | works | partial I think |
 | Touchpad | works | |
 | Touchscreen | partial | weird behavior |
 | TPM | x | |
 | USB | works | |
 | USB-PD | unsure | not sure if it triggers the PD protocol |
-| USB-C DisplayPort Alt Mode | x | maybe one day EC done |
+| USB-C DisplayPort Alt Mode | x | maybe one day EC done, huawei does not use the pmic glink framework, it uses interface from EC |
 | Video acceleration | unsure | depends on the main display driver status |
 | Virtualisation | x | |
 | Volumn keys | works | |
