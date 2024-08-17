@@ -223,44 +223,6 @@
 		};
 	};
 
-	usb0-sbu-mux {
-		compatible = "pericom,pi3usb102", "gpio-sbu-mux";
-
-		enable-gpios = <&tlmm 101 GPIO_ACTIVE_LOW>;
-		select-gpios = <&tlmm 164 GPIO_ACTIVE_HIGH>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&usb0_sbu_default>;
-
-		mode-switch;
-		orientation-switch;
-
-		port {
-			usb0_sbu_mux: endpoint {
-				remote-endpoint = <&ucsi0_sbu>;
-			};
-		};
-	};
-
-	usb1-sbu-mux {
-		compatible = "pericom,pi3usb102", "gpio-sbu-mux";
-
-		enable-gpios = <&tlmm 48 GPIO_ACTIVE_LOW>;
-		select-gpios = <&tlmm 47 GPIO_ACTIVE_HIGH>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&usb1_sbu_default>;
-
-		mode-switch;
-		orientation-switch;
-
-		port {
-			usb1_sbu_mux: endpoint {
-				remote-endpoint = <&ucsi1_sbu>;
-			};
-		};
-	};
-
 };
 
 &apps_rsc {
@@ -779,7 +741,6 @@
 					reg = <2>;
 
 					ucsi0_sbu: endpoint {
-						remote-endpoint = <&usb0_sbu_mux>;
 					};
 				};
 			};
@@ -815,7 +776,6 @@
 					reg = <2>;
 
 					ucsi1_sbu: endpoint {
-						remote-endpoint = <&usb1_sbu_mux>;
 					};
 				};
 			};
@@ -1621,40 +1581,6 @@
 			function = "qup2";
 			drive-strength = <2>;
 			bias-disable;
-		};
-	};
-
-	usb0_sbu_default: usb0-sbu-state {
-		oe-n-pins {
-			pins = "gpio101";
-			function = "gpio";
-			bias-disable;
-			drive-strength = <16>;
-			output-high;
-		};
-
-		sel-pins {
-			pins = "gpio164";
-			function = "gpio";
-			bias-disable;
-			drive-strength = <16>;
-		};
-	};
-
-	usb1_sbu_default: usb1-sbu-state {
-		oe-n-pins {
-			pins = "gpio48";
-			function = "gpio";
-			bias-disable;
-			drive-strength = <16>;
-			output-high;
-		};
-
-		sel-pins {
-			pins = "gpio47";
-			function = "gpio";
-			bias-disable;
-			drive-strength = <16>;
 		};
 	};
 
