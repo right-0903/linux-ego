@@ -3,9 +3,10 @@ MODNAME = gaokun-ec
 MODVER = 0.1
 
 obj-m += $(MODNAME).o
-$(MODNAME)-y += battery.o	\
-		ec.o		\
-		$(MODNAME)-main.o
+$(MODNAME)-y += $(MODNAME)-main.o
+
+obj-m += gaokun-battery.o
+obj-m += gaokun-ucsi.o
 
 KVER = $(shell uname -r)
 KDIR = /lib/modules/$(KVER)/build

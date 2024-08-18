@@ -8,16 +8,97 @@
  */
 
 #include <asm-generic/unaligned.h>
+#include <linux/auxiliary_bus.h>
 #include <linux/bits.h>
 #include <linux/input.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/usb/typec_mux.h>
+#include <linux/version.h>
+#include <linux/notifier.h>
+#include <drm/drm_bridge.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
 #include <linux/workqueue_types.h>
+#else
+#include <linux/workqueue.h>
+#endif
 
 #include "ec.h"
-#include "battery.h"
 
+
+struct gaokun_ec {
+	struct i2c_client *client;
+    struct mutex lock;
+	struct blocking_notifier_head notifier_list;
+
+	struct input_dev *idev;
+
+	bool suspended;
+
+	struct altmode *alt[2];
+};
+
+u8 *ec_command_data(struct gaokun_ec *ec, u8 mcmd, u8 scmd, u8 ilen, const u8 *buf, u8 olen)
+{
+	u8 ibuf[EC_INPUT_BUFFER_LENGTH];
+	static u8 obuf[EC_OUTPUT_BUFFER_LENGTH];
+	int ret;
+
+	mutex_lock(&ec->lock);
+
+	ibuf[0] = scmd;
+	ibuf[1] = ilen;
+
+	if (ilen > EC_INPUT_BUFFER_LENGTH || olen > EC_OUTPUT_BUFFER_LENGTH) { /* overflow */
+		obuf[0] = 0x02; // ACPI do this, intention?
+		goto err;
+	}
+
+	if(ilen > 0){
+		// copy the data block
+		memcpy(ibuf + 2, buf, ilen);
+	}
+	else{
+		ibuf[2] = 0; // ACPI use ibuf[3] = buf, may be unnecessary.
+	}
+
+	switch(ilen) {
+		case 0: case 1: case 2: case 3: case 4: case 5:
+		case 0x18:
+			ret = i2c_smbus_write_i2c_block_data(ec->client, mcmd, ilen + 2, ibuf);
+			if (ret) {
+				dev_err(&ec->client->dev, "I2C EC write failed with error code: %d\n", ret);
+				goto err;
+			}
+			break;
+		default:
+			// ACPI allow this, so we don't goto err.
+			dev_warn(&ec->client->dev, "Unsupported input data buffer length: %d\n", ilen);
+	}
+
+	usleep_range(2500, 3000); // Sleep (0x02)
+
+
+	switch(olen) {
+		case 1: case 2: case 3: case 4: case 5: case 6:
+		case 7: case 8: case 0xF: case 0x16: case 0x20:
+		case 0x23: case 0x40: case 0xFE: case 0xFF: case 0x9:
+			ret = i2c_smbus_read_i2c_block_data(ec->client, mcmd, olen, obuf);
+			if (ret < 0) {
+				dev_err(&ec->client->dev, "I2C EC read failed with error code: %d\n", ret);
+			}else{
+				dev_info(&ec->client->dev, "I2C EC read successful, data: %*ph\n", olen, obuf);
+			}
+			break;
+		default:
+			dev_warn(&ec->client->dev, "Unsupported output data buffer length: %d\n", olen);
+	}
+
+	err:
+	mutex_unlock(&ec->lock);
+	return obuf;
+}
+EXPORT_SYMBOL_GPL(ec_command_data);
 
 static inline int gaokun_get_event(struct gaokun_ec *ec)
 {
@@ -45,6 +126,7 @@ static irqreturn_t gaokun_ec_irq_handler(int irq, void *data)
 		input_report_switch(ec->idev, SW_LID, status); // \_SB.IC16.LID0.LIDB = INL3
 		input_sync(ec->idev);
 		dev_info(&ec->client->dev, "lid status change event triggered, data: %*ph\n", 4, obuf);
+        //  \_SB.GPU0.LIDB = INL3 ?
 		break;
 
 	case 0xC0:
@@ -55,39 +137,27 @@ static irqreturn_t gaokun_ec_irq_handler(int irq, void *data)
 	case 0x0A: case 0x0B: case 0x0C: case 0x0D: case 0x0E: case 0x0F:
 	case 0x10: case 0x12: case 0x13: case 0x17: case 0x19: case 0x20:
 	case 0x23: case 0xBF: case 0x18: // case 0x21: case 0x22:
-		// Windows Management Instrumentation Device
 		dev_info(&ec->client->dev, "WMI event triggered\n");
 		break;
 
-	// do not handle for now
-	case EC_EVENT_USB:
-		obuf = ec_command_data(ec, 0x03, 0xD3, 0, NULL, 9);
-		// 0x2: free, 0x4: charging, 0x8: display connected
-		if (obuf[4] == 0x8 || obuf[6] == 0x8){
-			dev_info(&ec->client->dev, "USB event triggered, connected, data is %*ph\n", 9, obuf);
-		}else{
-			dev_info(&ec->client->dev, "USB event triggered, disconnected, data is %*ph\n", 9, obuf);
-		}
-		break;
-/*
-	case EC_EVENT_UCSI:
-		u32 cci;
-		ec->ucsi->ops->read_cci(ec->ucsi, &cci);
-		ucsi_notify_common(ec->ucsi, cci);
-		dev_info(&ec->client->dev, "UCSI event triggered, cci is %*ph\n", 4, (u8 *)&cci);
-		break;
-*/
-
-	case EC_EVENT_BAT_A0: case EC_EVENT_BAT_A1: case EC_EVENT_BAT_A2: case EC_EVENT_BAT_A3: case EC_EVENT_BAT_B1:
-		battery_event_handler(ec, id);
-		break;
-
 	default:
-		dev_warn(&ec->client->dev, "Unknown event id: 0x%x\n", id);
+		blocking_notifier_call_chain(&ec->notifier_list, id, ec);
 	}
 
 	return IRQ_HANDLED;
 }
+
+int gaokun_ec_register_notify(struct gaokun_ec *ec, struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&ec->notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(gaokun_ec_register_notify);
+
+void gaokun_ec_unregister_notify(struct gaokun_ec *ec, struct notifier_block *nb)
+{
+	blocking_notifier_chain_unregister(&ec->notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(gaokun_ec_unregister_notify);
 
 /* Modern Standby */
 static int gaokun_ec_suspend(struct device *dev)
@@ -103,6 +173,10 @@ static int gaokun_ec_suspend(struct device *dev)
 	if (obuf[0])
 		return obuf[0];
 
+#ifndef PRODUCT
+	pr_info("%s: I2C EC read successful, data: %*ph\n", __func__, 2, obuf);
+#endif
+
 	ec->suspended = true;
 
 	return 0;
@@ -116,13 +190,69 @@ static int gaokun_ec_resume(struct device *dev)
 	if (!ec->suspended)
 		return 0;
 
+	// /* The EC or I2C host can be grumpy when waking up */
+	// for (i = 0; i < 3; i++) {
+	// 	x13s_ec_write(ec, REG_SUS_CTL, REG_SUS_CTL_SUS_EXIT);
+	// 	msleep(10);
+	// }
+
 	obuf = ec_command_data(ec, 0x02, 0x2, 1, (u8 []){0xEB}, 2);
 	if (obuf[0])
 		return obuf[0];
 
+#ifndef PRODUCT
+	pr_info("%s: I2C EC read successful, data: %*ph\n", __func__, 2, obuf);
+#endif
+
 	ec->suspended = false;
 
 	return 0;
+}
+
+static void gaokun_aux_release(struct device *dev)
+{
+	struct auxiliary_device *adev = to_auxiliary_dev(dev);
+
+	kfree(adev);
+}
+
+static void gaokun_aux_remove(void *data)
+{
+	struct auxiliary_device *adev = data;
+
+	auxiliary_device_delete(adev);
+	auxiliary_device_uninit(adev);
+}
+
+static int gaokun_aux_init(struct device *parent, const char *name,
+			      struct gaokun_ec *ec)
+{
+	struct auxiliary_device *adev;
+	int ret;
+
+	adev = kzalloc(sizeof(*adev), GFP_KERNEL);
+	if (!adev)
+		return -ENOMEM;
+
+	adev->name = name;
+	adev->id = 0;
+	adev->dev.parent = parent;
+	adev->dev.release = gaokun_aux_release;
+	adev->dev.platform_data = ec;
+
+	ret = auxiliary_device_init(adev);
+	if (ret) {
+		kfree(adev);
+		return ret;
+	}
+
+	ret = auxiliary_device_add(adev);
+	if (ret) {
+		auxiliary_device_uninit(adev);
+		return ret;
+	}
+
+	return devm_add_action_or_reset(parent, gaokun_aux_remove, adev);
 }
 
 static int gaokun_ec_probe(struct i2c_client *client)
@@ -138,9 +268,7 @@ static int gaokun_ec_probe(struct i2c_client *client)
 	mutex_init(&ec->lock);
 	ec->client = client;
 	i2c_set_clientdata(client, ec);
-
-	/* Battery and Adapter */
-	gaokun_battery_setup(ec);
+	BLOCKING_INIT_NOTIFIER_HEAD(&ec->notifier_list);
 
 	/* Lid switch */
 	ec->idev = devm_input_allocate_device(dev);
@@ -155,14 +283,27 @@ static int gaokun_ec_probe(struct i2c_client *client)
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to register input device\n");
 
+	/* Battery and Adapter */
+	ret = gaokun_aux_init(dev, "psy", ec);
+	if (ret)
+		return ret;
+
+	/* Altmode */
+	// ret = gaokun_aux_init(dev, "altmode", ec);
+	// if (ret)
+	// 	return ret;
+
+	/* UCSI */
+	ret = gaokun_aux_init(dev, "ucsi", ec);
+	if (ret)
+		return ret;
+
 	/* irq */
 	ret = devm_request_threaded_irq(dev, client->irq, NULL,
 					gaokun_ec_irq_handler, IRQF_ONESHOT,
 					dev_name(dev), ec);
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to request irq\n");
-
-	dev_warn(&ec->client->dev, "module init, this is an experimental EC driver, at your risks");
 
 	return 0;
 }
