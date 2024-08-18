@@ -18,6 +18,7 @@
 #include "sc8280xp-pmics.dtsi"
 
 / {
+	chassis-type = "tablet";
 	model = "Matebook E Go";
 	compatible = "huawei,matebook-e-go", "qcom,sc8280xp";
 	
@@ -89,6 +90,24 @@
 			wakeup-source;
 		};
 	}
+
+	leds {
+		compatible = "gpio-leds";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_indicator_en>;
+
+		led-camera-indicator {
+			label = "white:camera-indicator";
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_WHITE>;
+			gpios = <&tlmm 93 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "none";
+			default-state = "off";
+			/* Reuse as a panic indicator until we get a "camera on" trigger */
+			panic-indicator;
+		};
+	};
 
 	vreg_misc_3p3: regulator-misc-3p3 {
 		compatible = "regulator-fixed";
@@ -830,6 +849,8 @@
 	wifi@0 {
 		compatible = "pci17cb,1103";
 		reg = <0x10000 0x0 0x0 0x0 0x0>;
+		/* there is no calibrate data for huawei, but x13s and this one
+		have the same subsystem-device id 0108, 17cb */
 		qcom,ath11k-calibration-variant = "LE_X13S";
 	};
 };
@@ -1373,7 +1394,7 @@
 	};
 
 	cam_indicator_en: cam-indicator-en-state {
-		pins = "gpio28";
+		pins = "gpio93"; // or 34
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
