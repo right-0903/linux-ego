@@ -4,7 +4,8 @@ This repository contains workarounds for the Huawei Matebook E Go (8cx Gen 3) to
 
 This project mainly refers to the following projects:
 * [jhovold](https://github.com/jhovold/linux): who adds patches to the mainline to support X13s and SC8280XP (8cx Gen 3).
-* [steev](https://github.com/steev/linux/tree/lenovo-x13s-v6.10-rc3): who maintains the kernel for X13s.
+* [steev](https://github.com/steev/linux): who maintains the kernel for X13s.
+* [linaro team](https://patchwork.kernel.org/project/linux-pm/cover/20240614-yoga-ec-driver-v7-0-9f0b9b40ae76@linaro.org/): who authored the Lenovo c630 EC driver, and showed an example how to write auxiliary device modules.
 * [Nikita Travkin](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/platform/arm64/acer-aspire1-ec.c): who authored the very first Acer aspire1(sc7180) i2c EC driver.
 * [NewWheat](https://gitlab.com/New-Wheat/linux-for-huawei-matebook-e-2019): who helped me find EC interrupt, and offered one copy of i2c EC driver for reference.
 * [matalama80td3l](https://github.com/matalama80td3l/matebook-e-go-boot-works): who migrated the initial device tree from X13s' for the Huawei Matebook E Go.
@@ -25,7 +26,7 @@ The DT works with steev's latest branch. You should extract the firmwares requir
 
 Refer to [this](https://github.com/jhovold/linux/wiki/X13s) as well.
 
-With kernel version `6.10.3`.
+With kernel version `6.11-rc2` by [steev](https://github.com/steev/linux/).
 
 | Feature | Status | Note |
 | ------- | ------ | ---- |
