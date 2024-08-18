@@ -1339,20 +1339,6 @@
 	};
 };
 
-&pmc8280_2_gpios {
-	wwan_sw_en: wwan-sw-en-state {
-		pins = "gpio1";
-		function = "normal";
-	};
-};
-
-&pmc8280c_gpios {
-	edp_bl_pwm: edp-bl-pwm-state {
-		pins = "gpio8";
-		function = "func1";
-	};
-};
-
 &pmr735a_gpios {
 	hastings_reg_en: hastings-reg-en-state {
 		pins = "gpio1";
