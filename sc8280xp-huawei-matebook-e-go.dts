@@ -71,7 +71,14 @@
 		compatible = "gpio-keys";
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&vol_up_n>;
+		pinctrl-0 = <&mode_pin_active &vol_up_n>;
+
+		switch-mode {
+			gpios = <&tlmm 26 GPIO_ACTIVE_HIGH>;
+			linux,input-type = <EV_SW>;
+			linux,code = <SW_TABLET_MODE>;
+			wakeup-source;
+		};
 
 		key-vol-up {
 			label = "Volume Up";
@@ -1436,6 +1443,13 @@
 		pins = "gpio36", "gpio37";
 		function = "qup15";
 		drive-strength = <16>;
+		bias-disable;
+	};
+
+	mode_pin_active: mode-pin-state {
+		pins = "gpio26";
+		function = "gpio";
+
 		bias-disable;
 	};
 

@@ -36,6 +36,7 @@ With kernel version `6.10.3`.
 | Camera | x | |
 | CPUfreq | works | |
 | Display | x | [There](https://linaro.github.io/msm/soc/sc8280xp) is no DSI driver for SC8280XP now. |
+| Display sensors | x | ACPI call it so, for rotation detect, light detect, etc. added pinctrl nodes, but sc8280xp dt does not add SLPI node(unwise to reverse this node) |
 | EFI variables | works | with the [patch](./0001_enable_qseecom.patch). |
 | EC(WIP) | partial | Battery and adapter status, maybe modern standby |
 | Fingerprint reader | x | introduce from [commit](https://github.com/torvalds/linux/commit/d280fe309b88b337a9b26f96b7a9d9aa6d6c3a0f). |
