@@ -19,7 +19,6 @@
 #define YOGA_C630_UCSI_READ_SIZE	(YOGA_C630_UCSI_CCI_SIZE + YOGA_C630_UCSI_DATA_SIZE)
 #define YOGA_C630_UCSI_WRITE_SIZE   0x18
 
-
 /* The implementation of functions from lenovo-yoga-c630.c
  * keep origianl function name for the convenience, final release will be replaced.
  */
@@ -98,18 +97,44 @@ static int yoga_c630_ucsi_async_control(struct ucsi *ucsi, u64 command)
 	return yoga_c630_ec_ucsi_write(uec->ec, buf);
 }
 
+static void pmic_glink_ucsi_update_connector(struct ucsi_connector *con)
+{
+	// struct gaokun_ucsi *ucsi = ucsi_get_drvdata(con->ucsi);
+
+	con->typec_cap.orientation_aware = true;
+}
+
+static void pmic_glink_ucsi_connector_status(struct ucsi_connector *con)
+{
+	// struct gaokun_ucsi *ucsi = ucsi_get_drvdata(con->ucsi);
+	int orientation, index;
+
+	if (con->num > PMIC_GLINK_MAX_PORTS){
+		return;
+	}
+
+	index = ((con->num - 1) + 2) * 2;
+
+	orientation = usb_data[index] & EC_CON_REVERSE;
+	if (orientation >= 0) {
+		typec_set_orientation(con->port,
+				      orientation ?
+				      TYPEC_ORIENTATION_REVERSE :
+				      TYPEC_ORIENTATION_NORMAL);
+	}
+}
+
+
 const struct ucsi_operations yoga_c630_ucsi_ops = {
 	.read_version = yoga_c630_ucsi_read_version,
 	.read_cci = yoga_c630_ucsi_read_cci,
 	.read_message_in = yoga_c630_ucsi_read_message_in,
 	.sync_control = ucsi_sync_control_common,
 	.async_control = yoga_c630_ucsi_async_control,
-	// TODO: orientation detect, refer to ucsi_glink
-	// .update_connector = pmic_glink_ucsi_update_connector,
-	// .connector_status = pmic_glink_ucsi_connector_status,
+	.update_connector = pmic_glink_ucsi_update_connector,
+	.connector_status = pmic_glink_ucsi_connector_status,
 };
 
-// FIXME
 static int yoga_c630_ucsi_notify(struct notifier_block *nb,
 				 unsigned long action, void *data)
 {
@@ -118,14 +143,13 @@ static int yoga_c630_ucsi_notify(struct notifier_block *nb,
 
 	switch (action) {
 	case EC_EVENT_USB:
-		ucsi_connector_change(uec->ucsi, 1);
-		u8 *obuf = ec_command_data(uec->ec, 0x03, 0xD3, 0, NULL, 9);
-		pr_info_ratelimited("%s: USB event triggered, data is %*ph\n", __func__, 9, obuf);
+		ucsi_connector_change(uec->ucsi, (int)usb_data[3]);
 		return NOTIFY_OK;
 
 	case EC_EVENT_UCSI:
 		uec->ucsi->ops->read_cci(uec->ucsi, &cci);
 		ucsi_notify_common(uec->ucsi, cci);
+		// BIT(1) -> LEFT, BIT(2) -> RIGHT
 		pr_info_ratelimited("%s: UCSI event triggered, cci is %*ph\n", __func__, 4, (u8 *)&cci);
 		return NOTIFY_OK;
 

@@ -35,8 +35,10 @@ struct gaokun_ec {
 
 	bool suspended;
 
-	struct altmode *alt[2];
 };
+
+u8 usb_data[9];
+EXPORT_SYMBOL_GPL(usb_data);
 
 u8 *ec_command_data(struct gaokun_ec *ec, u8 mcmd, u8 scmd, u8 ilen, const u8 *buf, u8 olen)
 {
@@ -140,6 +142,13 @@ static irqreturn_t gaokun_ec_irq_handler(int irq, void *data)
 		dev_info(&ec->client->dev, "WMI event triggered\n");
 		break;
 
+	case EC_EVENT_USB:
+		obuf = ec_command_data(ec, 0x03, 0xD3, 0, NULL, 9);
+		pr_info_ratelimited("%s: USB EVENT, DATA: %*ph\n", __func__, 9, obuf);
+		memcpy(usb_data, obuf, 9);
+		blocking_notifier_call_chain(&ec->notifier_list, id, ec);
+		break;
+
 	default:
 		blocking_notifier_call_chain(&ec->notifier_list, id, ec);
 	}
@@ -173,10 +182,6 @@ static int gaokun_ec_suspend(struct device *dev)
 	if (obuf[0])
 		return obuf[0];
 
-#ifndef PRODUCT
-	pr_info("%s: I2C EC read successful, data: %*ph\n", __func__, 2, obuf);
-#endif
-
 	ec->suspended = true;
 
 	return 0;
@@ -186,23 +191,18 @@ static int gaokun_ec_resume(struct device *dev)
 {
 	struct gaokun_ec *ec = dev_get_drvdata(dev);
 	u8 *obuf;
+	int i;
 
 	if (!ec->suspended)
 		return 0;
 
-	// /* The EC or I2C host can be grumpy when waking up */
-	// for (i = 0; i < 3; i++) {
-	// 	x13s_ec_write(ec, REG_SUS_CTL, REG_SUS_CTL_SUS_EXIT);
-	// 	msleep(10);
-	// }
+	/* The EC or I2C host can be grumpy when waking up */
+	for (i = 0; i < 3; i++) {
+		obuf = ec_command_data(ec, 0x02, 0x2, 1, (u8 []){0xEB}, 2);
+		if (obuf[0] == 0) break;
 
-	obuf = ec_command_data(ec, 0x02, 0x2, 1, (u8 []){0xEB}, 2);
-	if (obuf[0])
-		return obuf[0];
-
-#ifndef PRODUCT
-	pr_info("%s: I2C EC read successful, data: %*ph\n", __func__, 2, obuf);
-#endif
+		msleep(10);
+	}
 
 	ec->suspended = false;
 
@@ -288,13 +288,13 @@ static int gaokun_ec_probe(struct i2c_client *client)
 	if (ret)
 		return ret;
 
-	/* Altmode */
-	// ret = gaokun_aux_init(dev, "altmode", ec);
-	// if (ret)
-	// 	return ret;
-
 	/* UCSI */
 	ret = gaokun_aux_init(dev, "ucsi", ec);
+	if (ret)
+		return ret;
+
+	/* Altmode */
+	ret = gaokun_aux_init(dev, "altmode", ec);
 	if (ret)
 		return ret;
 

@@ -36,6 +36,13 @@
 #define EC_INPUT_BUFFER_LENGTH 0xFD
 #define EC_OUTPUT_BUFFER_LENGTH 0xFF
 
+#define EC_CON_REVERSE			BIT(0)
+#define PMIC_GLINK_MAX_PORTS	2
+#define EC_EVENT_USB 	0x22
+
+extern u8 usb_data[9];
+
+
 struct gaokun_ec;
 struct notifier_block;
 
