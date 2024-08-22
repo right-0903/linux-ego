@@ -57,7 +57,7 @@ With kernel version `6.11-rc2` by [steev](https://github.com/steev/linux/).
 | TPM | x | |
 | USB | works | |
 | USB-PD | unsure | not sure if it triggers the PD protocol |
-| USB-C DisplayPort Alt Mode | x | maybe one day EC done, huawei does not use the pmic glink framework, it uses interface from EC |
+| USB-C DisplayPort Alt Mode | partial | edid and modes can be read, but there is no video signal. maybe one day EC done, huawei does not use the pmic glink framework, it uses interface from EC |
 | Video acceleration | unsure | depends on the main display driver status |
 | Virtualisation | x | |
 | Volumn keys | works | |
