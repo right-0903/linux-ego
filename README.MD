@@ -68,5 +68,8 @@ With kernel version `6.11-rc2` by [steev](https://github.com/steev/linux/).
 Recently, use the X13s' profile. \
 `sed -i 's/LENOVO.*ThinkPad X13s.*/LENOVO.*ThinkPad X13s.*|HUAWEI.*MateBook E.*\"/' /usr/share/alsa/ucm2/Qualcomm/sc8280xp/sc8280xp.conf`
 
+## Display
+There are too many unknowns(dsi support, dual dsi with video mode dsc, gpio, power supply, backlight, etc), no actual progress can be confirmed, I have uploaded all my progress, if you have an idea, then go ahead.
+
 ## Features spoilers
 [battery](battery_features.png)
