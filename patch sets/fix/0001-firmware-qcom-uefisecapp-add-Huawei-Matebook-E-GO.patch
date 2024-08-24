@@ -1,0 +1,25 @@
+From e83d109447ea8d0cc469eea5e59f447acfb83ccd Mon Sep 17 00:00:00 2001
+From: nuvole <mitltlatltl@gmail.com>
+Date: Tue, 13 Aug 2024 18:12:21 +0800
+Subject: [PATCH] firmware: qcom: uefisecapp: add Huawei Matebook E GO
+
+Signed-off-by: nuvole <mitltlatltl@gmail.com>
+---
+ drivers/firmware/qcom/qcom_scm.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/firmware/qcom/qcom_scm.c b/drivers/firmware/qcom/qcom_scm.c
+index 053b128a7..f1c1b3003 100644
+--- a/drivers/firmware/qcom/qcom_scm.c
++++ b/drivers/firmware/qcom/qcom_scm.c
+@@ -1720,6 +1720,7 @@ EXPORT_SYMBOL_GPL(qcom_scm_qseecom_app_send);
+ static const struct of_device_id qcom_scm_qseecom_allowlist[] __maybe_unused = {
+ 	{ .compatible = "lenovo,flex-5g" },
+ 	{ .compatible = "lenovo,thinkpad-x13s", },
++	{ .compatible = "huawei,matebook-e-go" },
+ 	{ .compatible = "qcom,sc8180x-primus" },
+ 	{ .compatible = "qcom,x1e80100-crd" },
+ 	{ .compatible = "qcom,x1e80100-qcp" },
+-- 
+2.46.0
+
