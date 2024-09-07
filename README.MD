@@ -73,3 +73,6 @@ There are too many unknowns(dsi support, dual dsi with video mode dsc, gpio, pow
 
 ## Features spoilers
 [battery](battery_features.png)
+
+## Progress
+Suspended(Since 08/25/2024), due to real life things.
