@@ -293,6 +293,14 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		vreg_l2b: ldo2 {
+			regulator-name = "vreg_l2b";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-boot-on;
+		};
+
 		vreg_l3b: ldo3 {
 			regulator-name = "vreg_l3b";
 			regulator-min-microvolt = <1200000>;
@@ -542,6 +550,8 @@
 
 		pinctrl-0 = <&disp_reset_n>;
 		pinctrl-names = "default";
+
+		vddio-supply = <&vreg_l2b>;
 
 		ports {
 			#address-cells = <1>;
