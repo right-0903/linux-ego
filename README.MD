@@ -63,6 +63,7 @@ With kernel version `6.11-rc2` by [steev](https://github.com/steev/linux/).
 | Volumn keys | works | |
 | Watchdog | works | |
 | Wi-Fi | works | use the 2.4 GHz band for stability. |
+| WMI related features(WIP)| partial | charging limit(implemented and tesing, coming soon, check feature_spoliers), FN lock, smart charge, temp. and so on |
 
 ## Audio
 Recently, use the X13s' profile. \
@@ -72,7 +73,7 @@ Recently, use the X13s' profile. \
 There are too many unknowns(dsi support, dual dsi with video mode dsc, gpio, power supply, backlight, etc), no actual progress can be confirmed, I have uploaded all my progress, if you have an idea, then go ahead.
 
 ## Features spoilers
-[battery](battery_features.png)
+[battery](feature_spoliers/battery_features.png)
 
 ## Progress
 Suspended(Since 08/25/2024), due to real life things.
