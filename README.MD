@@ -7,6 +7,7 @@ This project mainly refers to the following projects:
 * [steev](https://github.com/steev/linux): who maintains the kernel for X13s.
 * [linaro team](https://patchwork.kernel.org/project/linux-pm/cover/20240614-yoga-ec-driver-v7-0-9f0b9b40ae76@linaro.org/): who authored the Lenovo c630 EC driver, and showed an example how to write auxiliary device modules.
 * [Nikita Travkin](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/platform/arm64/acer-aspire1-ec.c): who authored the very first Acer aspire1(sc7180) i2c EC driver.
+* [aymanbagabas](https://github.com/aymanbagabas/Huawei-WMI): who authored Huawei laptop wmi driver and showed the meaning of ACPI identifiers like GBTT, SBTT, etc
 * [NewWheat](https://gitlab.com/New-Wheat/linux-for-huawei-matebook-e-2019): who helped me find EC interrupt, and offered one copy of i2c EC driver for reference.
 * [matalama80td3l](https://github.com/matalama80td3l/matebook-e-go-boot-works): who migrated the initial device tree from X13s' for the Huawei Matebook E Go.
 * [chenxuecong2](https://github.com/chenxuecong2/linux-huawei-matebook-e-go): who migrated the initial device tree from X13s' for the Huawei Matebook E Go.
@@ -63,17 +64,40 @@ With kernel version `6.11-rc2` by [steev](https://github.com/steev/linux/).
 | Volumn keys | works | |
 | Watchdog | works | |
 | Wi-Fi | works | use the 2.4 GHz band for stability. |
-| WMI related features(WIP)| partial | charging limit(implemented and tesing, coming soon, check feature_spoliers), FN lock, smart charge, temp. and so on |
+| WMI related features(WIP)| partial | charging control, FN lock, smart charge, and so on(undiscoverd things due to its meaning is unknown) |
 
 ## Audio
 Recently, use the X13s' profile. \
 `sed -i 's/LENOVO.*ThinkPad X13s.*/LENOVO.*ThinkPad X13s.*|HUAWEI.*MateBook E.*\"/' /usr/share/alsa/ucm2/Qualcomm/sc8280xp/sc8280xp.conf`
 
+## Charging control
+`echo 'start stop' /sys/devices/platform/gaokun-wmi/charge_control_thresholds`
+
+Clarification from [TLP](https://linrunner.de/tlp/faq/battery.html).
+> Start charge threshold (START_CHARGE_THRESH_BATx): battery charge level below which charging will begin when connecting the charger.
+
+> Stop charge threshold (STOP_CHARGE_TRESH_BATx): battery charge level above which charging will stop while the charger is connected.
+
 ## Display
 There are too many unknowns(dsi support, dual dsi with video mode dsc, gpio, power supply, backlight, etc), no actual progress can be confirmed, I have uploaded all my progress, if you have an idea, then go ahead.
+
+## FN Lock
+`echo 0/1 > /sys/devices/platform/gaokun-wmi/fn_lock_state` \
+`0`: unlock the fn key \
+`1`: lock the fn key, you can only trigger function with `Fn + F1-12` when you enabled \
+BTW, you can press `Fn` key(light on) to reverse it.
+
+
+## Smart charging
+I don't know the meaning of arguments, but it is implemented, check \
+`cat /sys/devices/platform/gaokun-wmi/smart_charge` \
+`cat /sys/devices/platform/gaokun-wmi/smart_charge_param`
 
 ## Features spoilers
 [battery](feature_spoliers/battery_features.png)
 
 ## Progress
 Suspended(Since 08/25/2024), due to real life things.
+
+## Help wanted
+I am occupied with real life things, I spend much free time on it, if someone can help me test features, that will be awesome. Also, as I am an amateur, I am happy to receive suggestions from coding, ACPI/DSDT/SSDT reversing, working mechanism of UCSI, DSI panel, etc.
