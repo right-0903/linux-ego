@@ -83,15 +83,18 @@ There are too many unknowns(dsi support, dual dsi with video mode dsc, gpio, pow
 
 ## FN Lock
 `echo 0/1 > /sys/devices/platform/gaokun-wmi/fn_lock_state` \
-`0`: unlock the fn key \
-`1`: lock the fn key, you can only trigger function with `Fn + F1-12` when you enabled \
-BTW, you can press `Fn` key(light on) to reverse it.
-
+`0`: disable the fn key(hotkey first, such as press `F1` to decrease brightness) \
+`1`: enable the fn key(function key first), you can only trigger hotkey with `Fn + F1-12` \
+BTW, you can press `Fn` key(light on) to reverse it temporarily.
 
 ## Smart charging
-I don't know the meaning of arguments, but it is implemented, check \
+I know less about the meaning of arguments, but it is implemented, check and do your own investigation, feel free to give me feedback \
 `cat /sys/devices/platform/gaokun-wmi/smart_charge` \
 `cat /sys/devices/platform/gaokun-wmi/smart_charge_param`
+
+`smart_charge`: default are 4 72 40 70, correspond to charging mode, delay, start, stop, after 72 hours, charging level is limited to 70%.
+
+`smart_charge_param`: enable or not? I am not sure.
 
 ## Features spoilers
 [battery](feature_spoliers/battery_features.png)
