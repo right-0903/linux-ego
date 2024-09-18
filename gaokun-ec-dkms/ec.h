@@ -50,6 +50,7 @@ struct notifier_block;
 #define GAOKUN_DEV_USBC			"altmode"
 #define GAOKUN_DEV_UCSI			"ucsi"
 #define GAOKUN_DEV_PSY			"psy"
+#define GAOKUN_DEV_WMI			"wmi"
 
 int gaokun_ec_register_notify(struct gaokun_ec *ec, struct notifier_block *nb);
 void gaokun_ec_unregister_notify(struct gaokun_ec *ec, struct notifier_block *nb);

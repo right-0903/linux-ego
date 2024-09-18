@@ -299,6 +299,11 @@ static int gaokun_ec_probe(struct i2c_client *client)
 	if (ret)
 		return ret;
 
+	/* WMI */
+	ret = gaokun_aux_init(dev, "wmi", ec);
+	if (ret)
+		return ret;
+
 	/* irq */
 	ret = devm_request_threaded_irq(dev, client->irq, NULL,
 					gaokun_ec_irq_handler, IRQF_ONESHOT,

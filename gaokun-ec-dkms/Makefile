@@ -5,9 +5,10 @@ MODVER = 0.1
 obj-m += $(MODNAME).o
 $(MODNAME)-y += $(MODNAME)-main.o
 
-obj-m += gaokun-battery.o
-obj-m += gaokun-ucsi.o
-obj-m += gaokun-altmode.o
+obj-m += gaokun-battery.o \
+	 gaokun-ucsi.o    \
+	 gaokun-altmode.o \
+	 gaokun-wmi.o
 
 KVER = $(shell uname -r)
 KDIR = /lib/modules/$(KVER)/build
