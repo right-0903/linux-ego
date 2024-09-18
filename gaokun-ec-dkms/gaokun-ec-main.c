@@ -93,6 +93,7 @@ u8 *ec_command_data(struct gaokun_ec *ec, u8 mcmd, u8 scmd, u8 ilen, const u8 *b
 			ret = i2c_smbus_read_i2c_block_data(ec->client, mcmd, olen, obuf);
 			if (ret < 0) {
 				dev_err(&ec->client->dev, "I2C EC read failed with error code: %d\n", ret);
+				goto err;
 			}else{
 				dev_info(&ec->client->dev, "I2C EC read successful, data: %*ph\n", olen, obuf);
 			}
@@ -100,8 +101,14 @@ u8 *ec_command_data(struct gaokun_ec *ec, u8 mcmd, u8 scmd, u8 ilen, const u8 *b
 		default:
 			dev_warn(&ec->client->dev, "Unsupported output data buffer length: %d\n", olen);
 	}
+	// set to zero, to indicate status for the convinient of transplanting ACPI method
+	obuf[0] = 0;
 
-	err:
+	mutex_unlock(&ec->lock);
+	return obuf;
+
+err:
+	obuf[0] = 1;
 	mutex_unlock(&ec->lock);
 	return obuf;
 }
