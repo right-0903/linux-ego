@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * gaokun-ec - An EC driver for HUAWEI Matebook E Go (sc8280xp)
  *
- * based on acer-aspire1-ec.c : https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/platform/arm64/acer-aspire1-ec.c
+ * reference: drivers/platform/arm64/acer-aspire1-ec.c
+ *            drivers/platform/arm64/lenovo-yoga-c630.c
  *
  * Copyright (C) 2024 nuvole <mitltlatltl@gmail.com>
  */

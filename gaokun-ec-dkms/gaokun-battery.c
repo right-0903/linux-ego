@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * gaokun-battery - A power supply driver for HUAWEI Matebook E Go (sc8280xp)
+ *
+ * Copyright (C) 2024 nuvole <mitltlatltl@gmail.com>
+ */
+
 #include <linux/auxiliary_bus.h>
 #include <linux/bits.h>
 #include <linux/cleanup.h>
