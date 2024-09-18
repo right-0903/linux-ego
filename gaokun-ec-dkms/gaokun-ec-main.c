@@ -43,6 +43,10 @@ EXPORT_SYMBOL_GPL(usb_data);
 
 u8 *ec_command_data(struct gaokun_ec *ec, u8 mcmd, u8 scmd, u8 ilen, const u8 *buf, u8 olen)
 {
+	/* The C implementation of ACPI method ECCD
+	 * FIXME: ECCD share the OBUF as a field DOBF,
+	 * but it has an impact on thread safty
+	 */
 	u8 ibuf[EC_INPUT_BUFFER_LENGTH];
 	static u8 obuf[EC_OUTPUT_BUFFER_LENGTH];
 	int ret;
