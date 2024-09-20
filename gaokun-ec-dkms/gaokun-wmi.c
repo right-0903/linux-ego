@@ -373,13 +373,67 @@ static ssize_t fn_lock_state_store(struct device *dev,
 
 static DEVICE_ATTR_RW(fn_lock_state);
 
+/* Thermal Zone */
+/* Range from 0 to 0x2C, partial valid */
+static u8 temp_reg[] = {0x05, 0x07, 0x08, 0x0E, 0x0F, 0x12, 0x15,
+						0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24,
+						0x25, 0x26, 0x27, 0x28, 0x29, 0x2A};
+static int gaokun_get_temp(struct device *dev, s16 temp[sizeof(temp_reg)])
+{
+    /* GTMP */
+    struct gaokun_wmi *ecwmi = dev_get_drvdata(dev);
+	u8 *obuf;
+	int i = 0;
+
+	while (i < sizeof(temp_reg)) {
+		obuf = ec_command_data(ecwmi->ec, 0x02, 0x61, 1, (u8 []){temp_reg[i]}, 4);
+		if(*obuf)
+			return -EIO;
+		temp[i++] = *(s16 *)(obuf + 2);
+		usleep_range(1200, 1500);
+	}
+
+	return 0;
+}
+
+static ssize_t temperature_show(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	int err;
+	s16 temp[sizeof(temp_reg)];
+	int len, i;
+	char *ptr = buf;
+
+	err = gaokun_get_temp(dev, temp);
+	if (err)
+		return err;
+
+	len = i = 0;
+	while (i < sizeof(temp_reg)) {
+		// sysfs_emit does not work, why?
+        s16 value = temp[i++];
+        if (value < 0) {
+            len += sprintf(ptr + len, "-");
+            value = -value;
+        }
+        len += sprintf(ptr + len, "%d.%d ", value / 10, value % 10);
+	}
+	len += sprintf(ptr + len, "\n");
+
+	return len;
+}
+
+static DEVICE_ATTR_RO(temperature);
+
 static struct attribute *gaokun_wmi_features_attrs[] = {
 	&dev_attr_charge_control_start_threshold.attr,
 	&dev_attr_charge_control_end_threshold.attr,
 	&dev_attr_charge_control_thresholds.attr,
 	&dev_attr_smart_charge_param.attr,
 	&dev_attr_smart_charge.attr,
-    &dev_attr_fn_lock_state.attr,
+	&dev_attr_fn_lock_state.attr,
+	&dev_attr_temperature.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(gaokun_wmi_features);
