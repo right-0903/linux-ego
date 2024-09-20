@@ -60,6 +60,7 @@
 /* possible value: 2: detach, 3: attach */
 #define EC_ADP_STATE		0x81
 #define EC_AC_STATUS 		BIT(0)
+#define EC_BAT_PRESENT		BIT(1)
 
 struct gaokun_psy {
     struct gaokun_ec *ec;
@@ -78,11 +79,13 @@ struct gaokun_ec_bat_psy_static_data {
 	__le16 design_capacity;
 	const char * const serial_number;
 	const char * const vendor;
-} __packed;
+	int present;
+};
 
 static struct gaokun_ec_bat_psy_static_data static_data = {
 	.vendor = gaokun_battery_vendor,
-	.serial_number = gaokun_battery_serial
+	.serial_number = gaokun_battery_serial,
+	.present = 0,
 };
 
 static inline void gaokun_get_static_battery_data(struct gaokun_psy *ecbat)
@@ -107,8 +110,15 @@ static inline void gaokun_get_static_battery_data(struct gaokun_psy *ecbat)
 
 	/* serial numbers */
 	ec_read_word_data(ec, EC_BAT_SRNM_L, EC_BAT_SRNM_H, &val);
-
 	snprintf(gaokun_battery_serial, sizeof(gaokun_battery_serial), "%d", val);
+
+	/* battery present */
+	ec_command_data(ec, 0x02, 0xB2, 1, (u8 []){0x90}, 2);
+	usleep_range(1200, 1500);
+	obuf = ec_command_data(ec, 0x02, EC_READ, 1, (u8 []){EC_ADP_STATE}, 3);
+	val = obuf[2] & EC_BAT_PRESENT;
+	static_data.present = val >> 1;
+
 }
 
 struct gaokun_ec_bat_psy_dynamic_data {
@@ -118,7 +128,7 @@ struct gaokun_ec_bat_psy_dynamic_data {
 	__le16 percentage_now;
 	__le16 BCLP; // last_full_capacity
 	__le16 BCCL; // battery charging cycle
-} __packed;
+};
 
 static int gaokun_ec_bat_psy_get_property(struct power_supply *psy,
 				      enum power_supply_property psp,
@@ -184,7 +194,7 @@ static int gaokun_ec_bat_psy_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_PRESENT:
-		val->intval = 1;
+		val->intval = static_data.present;
 		break;
 
 	case POWER_SUPPLY_PROP_SCOPE:
@@ -251,7 +261,7 @@ static int gaokun_ec_adp_psy_get_property(struct power_supply *psy,
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
 		obuf = ec_command_data(ecbat->ec, 0x02, EC_READ, 1, (u8 []){EC_ADP_STATE}, 3);
-		val->intval = obuf[3] & EC_AC_STATUS;
+		val->intval = obuf[2] & EC_AC_STATUS;
 		break;
 
 	default:
