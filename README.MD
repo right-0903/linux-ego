@@ -64,7 +64,7 @@ With kernel version `6.11-rc2` by [steev](https://github.com/steev/linux/).
 | Volumn keys | works | |
 | Watchdog | works | |
 | Wi-Fi | works | use the 2.4 GHz band for stability. |
-| WMI related features(WIP)| partial | charging control, FN lock, smart charge, and so on(undiscoverd things due to its meaning is unknown) |
+| WMI related features(WIP)| partial | charging control, FN lock, smart charge, thermal sensors and so on(undiscoverd things due to its meaning is unknown) |
 
 ## Audio
 Recently, use the X13s' profile. \
@@ -95,6 +95,10 @@ I know less about the meaning of arguments, but it is implemented, check and do 
 `smart_charge`: default are 4 72 40 70, correspond to charging mode, delay, start, stop, after 72 hours, charging level is limited to 70%.
 
 `smart_charge_param`: enable or not? I am not sure.
+
+## Thermal Sensors from EC
+I don't know these sensors for which devices, but you can read them \
+`cat /sys/devices/platform/gaokun-wmi/temperature`
 
 ## Features spoilers
 [battery](feature_spoliers/battery_features.png)
