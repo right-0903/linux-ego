@@ -177,7 +177,7 @@ static DEVICE_ATTR_RW(charge_control_end_threshold);
 static DEVICE_ATTR_RW(charge_control_thresholds);
 
 /* Smart charge param*/
-static int huawei_wmi_smart_charge_param_get(struct device *dev, int *value)
+static int gaokun_get_smart_charge_param(struct device *dev, int *value)
 {
 	// GBAC
 	struct gaokun_wmi *ecwmi = dev_get_drvdata(dev);
@@ -191,7 +191,7 @@ static int huawei_wmi_smart_charge_param_get(struct device *dev, int *value)
 	return obuf[0];
 }
 
-static int huawei_wmi_smart_charge_param_set(struct device *dev, int value)
+static int gaokun_set_smart_charge_param(struct device *dev, int value)
 {
 	// SBAC
 	struct gaokun_wmi *ecwmi = dev_get_drvdata(dev);
@@ -211,7 +211,7 @@ static ssize_t smart_charge_param_show(struct device *dev,
 {
 	int err, value;
 
-	err = huawei_wmi_smart_charge_param_get(dev, &value);
+	err = gaokun_get_smart_charge_param(dev, &value);
 	if (err)
 		return err;
 
@@ -227,7 +227,7 @@ static ssize_t smart_charge_param_store(struct device *dev,
 	if (sscanf(buf, "%d", &value) != 1)
 		return -EINVAL;
 
-	err = huawei_wmi_smart_charge_param_set(dev, value);
+	err = gaokun_set_smart_charge_param(dev, value);
 	if (err)
 		return err;
 
@@ -237,7 +237,7 @@ static ssize_t smart_charge_param_store(struct device *dev,
 static DEVICE_ATTR_RW(smart_charge_param);
 
 /* Smart charge */
-static int huawei_wmi_smart_charge_get(struct device *dev, int *mode, int *delay, int *start, int *end)
+static int gaokun_get_smart_charge(struct device *dev, int *mode, int *delay, int *start, int *end)
 {
 	// GBCM
 	struct gaokun_wmi *ecwmi = dev_get_drvdata(dev);
@@ -257,7 +257,7 @@ static int huawei_wmi_smart_charge_get(struct device *dev, int *mode, int *delay
 	return 0;
 }
 
-static int huawei_wmi_smart_charge_set(struct device *dev, int mode, int delay, int start, int end)
+static int gaokun_set_smart_charge(struct device *dev, int mode, int delay, int start, int end)
 {
 	// SBCM
 	struct gaokun_wmi *ecwmi = dev_get_drvdata(dev);
@@ -277,7 +277,7 @@ static ssize_t smart_charge_show(struct device *dev,
 {
 	int err, start, end, mode, delay;
 
-	err = huawei_wmi_smart_charge_get(dev, &mode, &delay, &start, &end);
+	err = gaokun_get_smart_charge(dev, &mode, &delay, &start, &end);
 	if (err)
 		return err;
 
@@ -293,7 +293,7 @@ static ssize_t smart_charge_store(struct device *dev,
 	if (sscanf(buf, "%d %d %d %d", &mode, &delay, &start, &end) != 4)
 		return -EINVAL;
 
-	err = huawei_wmi_smart_charge_set(dev, mode, delay, start, end);
+	err = gaokun_set_smart_charge(dev, mode, delay, start, end);
 	if (err)
 		return err;
 
