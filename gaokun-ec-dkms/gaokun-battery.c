@@ -33,24 +33,32 @@
  * CRNT: current now
  * BCAP: percentage now
  */
-#define EC_BAT_BCAP_L 0x90
-#define EC_BAT_BCAP_H 0x91
-#define EC_BAT_VOLT_L 0x92
-#define EC_BAT_VOLT_H 0x93
-#define EC_BAT_CPCT_L 0x94
-#define EC_BAT_CPCT_H 0x95
-#define EC_BAT_BCLP_L 0x96
-#define EC_BAT_BCLP_H 0x97
-#define EC_BAT_CRNT_L 0x9A
-#define EC_BAT_CRNT_H 0x9B
-#define EC_BAT_DSCP_L 0xA2
-#define EC_BAT_DSCP_H 0xA3
-#define EC_BAT_DSVO_L 0xA4
-#define EC_BAT_DSVO_H 0xA5
-#define EC_BAT_SRNM_L 0xA6
-#define EC_BAT_SRNM_H 0xA7
-#define EC_BAT_BCCL_L 0xAA
-#define EC_BAT_BCCL_H 0xAB
+#define EC_BAT_BCAP_L		0x90
+#define EC_BAT_BCAP_H		0x91
+#define EC_BAT_VOLT_L		0x92
+#define EC_BAT_VOLT_H		0x93
+#define EC_BAT_CPCT_L		0x94
+#define EC_BAT_CPCT_H		0x95
+#define EC_BAT_BCLP_L		0x96
+#define EC_BAT_BCLP_H		0x97
+#define EC_BAT_CRNT_L		0x9A
+#define EC_BAT_CRNT_H		0x9B
+#define EC_BAT_DSCP_L		0xA2
+#define EC_BAT_DSCP_H		0xA3
+#define EC_BAT_DSVO_L		0xA4
+#define EC_BAT_DSVO_H		0xA5
+#define EC_BAT_SRNM_L		0xA6
+#define EC_BAT_SRNM_H		0xA7
+#define EC_BAT_BCCL_L		0xAA
+#define EC_BAT_BCCL_H		0xAB
+
+#define EC_EVENT_BAT_A0		0xA0
+#define EC_EVENT_BAT_A1		0xA1
+#define EC_EVENT_BAT_A2		0xA2
+#define EC_EVENT_BAT_A3		0xA3
+#define EC_EVENT_BAT_B1		0xB1
+
+#define MILLI_TO_MICRO		1000
 
 /* possible value: 1: discharge 2: charge, other, maybe 8:full */
 #define EC_BAT_STATE		0x82
@@ -62,12 +70,13 @@
 #define EC_AC_STATUS 		BIT(0)
 #define EC_BAT_PRESENT		BIT(1)
 
-struct gaokun_psy {
-    struct gaokun_ec *ec;
-    struct device *dev;
-    struct notifier_block nb;
 
-    struct power_supply *bat_psy;
+struct gaokun_psy {
+	struct gaokun_ec *ec;
+	struct device *dev;
+	struct notifier_block nb;
+
+	struct power_supply *bat_psy;
 	struct power_supply *adp_psy;
 };
 
@@ -90,7 +99,7 @@ static struct gaokun_ec_bat_psy_static_data static_data = {
 
 static inline void gaokun_get_static_battery_data(struct gaokun_psy *ecbat)
 {
-    struct gaokun_ec *ec = ecbat->ec;
+	struct gaokun_ec *ec = ecbat->ec;
 	int cnt, input;
 	u8 *obuf;
 	u16 val;
@@ -135,7 +144,7 @@ static int gaokun_ec_bat_psy_get_property(struct power_supply *psy,
 				      union power_supply_propval *val)
 {
 	struct gaokun_psy *ecbat = power_supply_get_drvdata(psy);
-    struct gaokun_ec *ec = ecbat->ec;
+	struct gaokun_ec *ec = ecbat->ec;
 	struct gaokun_ec_bat_psy_dynamic_data dynamic_data;
 	int offset;
 	u16 _val;
@@ -152,7 +161,6 @@ static int gaokun_ec_bat_psy_get_property(struct power_supply *psy,
 			val->intval = POWER_SUPPLY_STATUS_CHARGING;
 		else
 			val->intval = POWER_SUPPLY_STATUS_FULL;
-		// dev_info(ecbat->dev, "battery_status_now: %d\n", val->intval);
 		break;
 
 	case POWER_SUPPLY_PROP_CYCLE_COUNT:
@@ -244,16 +252,16 @@ static enum power_supply_property gaokun_ec_bat_psy_props[] = {
 };
 
 static const struct power_supply_desc gaokun_ec_bat_psy_desc = {
-	.name		= "gaokun-ec-battery",
-	.type		= POWER_SUPPLY_TYPE_BATTERY,
+	.name			= "gaokun-ec-battery",
+	.type			= POWER_SUPPLY_TYPE_BATTERY,
 	.get_property	= gaokun_ec_bat_psy_get_property,
-	.properties	= gaokun_ec_bat_psy_props,
+	.properties		= gaokun_ec_bat_psy_props,
 	.num_properties	= ARRAY_SIZE(gaokun_ec_bat_psy_props),
 };
 
 static int gaokun_ec_adp_psy_get_property(struct power_supply *psy,
-				      enum power_supply_property psp,
-				      union power_supply_propval *val)
+						enum power_supply_property psp,
+						union power_supply_propval *val)
 {
 	struct gaokun_psy *ecbat = power_supply_get_drvdata(psy);
 	u8 *obuf;
@@ -276,23 +284,23 @@ static enum power_supply_property gaokun_ec_adp_psy_props[] = {
 };
 
 static const struct power_supply_desc gaokun_ec_adp_psy_desc = {
-	.name		= "gaokun-ec-adapter",
-	.type		= POWER_SUPPLY_TYPE_USB_TYPE_C,
+	.name			= "gaokun-ec-adapter",
+	.type			= POWER_SUPPLY_TYPE_USB_TYPE_C,
 	.get_property	= gaokun_ec_adp_psy_get_property,
-	.properties	= gaokun_ec_adp_psy_props,
+	.properties		= gaokun_ec_adp_psy_props,
 	.num_properties	= ARRAY_SIZE(gaokun_ec_adp_psy_props),
 };
 
 
 static int gaokun_psy_notify(struct notifier_block *nb,
-                unsigned long action, void *data)
+					unsigned long action, void *data)
 {
-    struct gaokun_psy *ecbat = container_of(nb, struct gaokun_psy, nb);
+	struct gaokun_psy *ecbat = container_of(nb, struct gaokun_psy, nb);
 
-    switch (action) {
-    case EC_EVENT_BAT_A0:
+	switch (action) {
+	case EC_EVENT_BAT_A0: /* plug in or plug out */
 		power_supply_changed(ecbat->adp_psy);
-        usleep_range(12000, 15000);
+		usleep_range(12000, 15000);
 		power_supply_changed(ecbat->bat_psy);
 		dev_info(ecbat->dev, "EC_EVENT_BAT_A0 event triggered\n");
 		break;
@@ -303,93 +311,100 @@ static int gaokun_psy_notify(struct notifier_block *nb,
 		break;
 
 	case EC_EVENT_BAT_A2:
-        // Notify (\_SB.BATC, 0x81) // Information Change
+		/* Notify (\_SB.BATC, 0x81) // Information Change
+		 * From ACPI specification version 6.3, section 10.2.1
+		 * The static battery information has changed.
+		 * For systems that have battery slots in a docking station
+		 */
 		dev_info(ecbat->dev, "EC_EVENT_BAT_A2 event triggered\n");
-		fallthrough;
+		break;
 
 	case EC_EVENT_BAT_A3:
 		power_supply_changed(ecbat->bat_psy);
 		dev_info(ecbat->dev, "EC_EVENT_BAT_A3 event triggered\n");
 		break;
 
-	case EC_EVENT_BAT_B1: // detach
+	case EC_EVENT_BAT_B1:
+		// Notify (\_SB.BATC, 0x81) // Information Change
 		dev_info(ecbat->dev, "EC_EVENT_BAT_B1 event triggered\n");
 		break;
-    }
+	}
 
-    return NOTIFY_OK;
+	return NOTIFY_OK;
 }
 
 static int gaokun_psy_probe(struct auxiliary_device *adev,
-                   const struct auxiliary_device_id *id)
+					const struct auxiliary_device_id *id)
 {
-    struct gaokun_ec *ec = adev->dev.platform_data;
+	struct gaokun_ec *ec = adev->dev.platform_data;
 	struct power_supply_config psy_cfg = {};
-    struct device *dev = &adev->dev;
-    struct gaokun_psy *ecbat;
-    int ret;
+	struct device *dev = &adev->dev;
+	struct gaokun_psy *ecbat;
+	int ret;
 
-    ecbat = devm_kzalloc(&adev->dev, sizeof(*ecbat), GFP_KERNEL);
-    if (!ecbat)
-        return -ENOMEM;
+	ecbat = devm_kzalloc(&adev->dev, sizeof(*ecbat), GFP_KERNEL);
+	if (!ecbat)
+		return -ENOMEM;
 
-    ecbat->ec = ec;
-    ecbat->dev = dev;
-    ecbat->nb.notifier_call = gaokun_psy_notify;
+	ecbat->ec = ec;
+	ecbat->dev = dev;
+	ecbat->nb.notifier_call = gaokun_psy_notify;
 
 	auxiliary_set_drvdata(adev, ecbat);
 
 	psy_cfg.drv_data = ecbat;
-    psy_cfg.supplied_to = (char **)&gaokun_ec_bat_psy_desc.name;
-    psy_cfg.num_supplicants = 1;
+	psy_cfg.supplied_to = (char **)&gaokun_ec_bat_psy_desc.name;
+	psy_cfg.num_supplicants = 1;
 
 	// ecbat->bat_psy = devm_power_supply_register(dev, &gaokun_ec_bat_psy_desc, &psy_cfg);
 	ecbat->bat_psy = power_supply_register_no_ws(dev, &gaokun_ec_bat_psy_desc, &psy_cfg);
 	if (IS_ERR(ecbat->bat_psy))
 		return dev_err_probe(dev, PTR_ERR(ecbat->bat_psy),
-				     "Failed to register battery power supply\n");
+					"Failed to register battery power supply\n");
 
 	gaokun_get_static_battery_data(ecbat); // get static data, only once
 
 	ecbat->adp_psy = power_supply_register_no_ws(dev, &gaokun_ec_adp_psy_desc, &psy_cfg);
 	if (IS_ERR(ecbat->adp_psy))
 		return dev_err_probe(dev, PTR_ERR(ecbat->adp_psy),
-				     "Failed to register AC power supply\n");
+					"Failed to register AC power supply\n");
 
-    ret = gaokun_ec_register_notify(ec, &ecbat->nb);
-    if (ret)
-        goto err_unreg_bat;
+	ret = gaokun_ec_register_notify(ec, &ecbat->nb);
+	if (ret)
+		goto err_unreg_bat;
 
-    dev_info(ecbat->dev, "EC battery init\n");
-    return 0;
+	dev_info(ecbat->dev, "EC battery init\n");
+
+	return 0;
 
 err_unreg_bat:
-    power_supply_unregister(ecbat->bat_psy);
+	power_supply_unregister(ecbat->bat_psy);
 	power_supply_unregister(ecbat->adp_psy);
-    return ret;
+	return ret;
 }
 
 static void gaokun_psy_remove(struct auxiliary_device *adev)
 {
-    struct gaokun_psy *ecbat = auxiliary_get_drvdata(adev);
+	struct gaokun_psy *ecbat = auxiliary_get_drvdata(adev);
 
-    gaokun_ec_unregister_notify(ecbat->ec, &ecbat->nb);
-    power_supply_unregister(ecbat->bat_psy);
-    power_supply_unregister(ecbat->adp_psy);
+	gaokun_ec_unregister_notify(ecbat->ec, &ecbat->nb);
+	power_supply_unregister(ecbat->bat_psy);
+	power_supply_unregister(ecbat->adp_psy);
+
 	dev_info(ecbat->dev, "EC battery exit\n");
 }
  
 static const struct auxiliary_device_id gaokun_psy_id_table[] = {
-    { .name = GAOKUN_MOD_NAME "." GAOKUN_DEV_PSY, },
-    {}
+	{ .name = GAOKUN_MOD_NAME "." GAOKUN_DEV_PSY, },
+	{}
 };
 MODULE_DEVICE_TABLE(auxiliary, gaokun_psy_id_table);
 
 static struct auxiliary_driver gaokun_psy_driver = {
-    .name = GAOKUN_DEV_PSY,
-    .id_table = gaokun_psy_id_table,
-    .probe = gaokun_psy_probe,
-    .remove = gaokun_psy_remove,
+	.name = GAOKUN_DEV_PSY,
+	.id_table = gaokun_psy_id_table,
+	.probe = gaokun_psy_probe,
+	.remove = gaokun_psy_remove,
 };
 
 module_auxiliary_driver(gaokun_psy_driver);

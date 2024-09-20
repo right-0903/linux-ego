@@ -6,18 +6,6 @@
 #include <linux/delay.h>
 #include <linux/i2c.h>
 
-/* ========================================================================== */
-
-#define EC_EVENT_BAT_A0 0xA0
-#define EC_EVENT_BAT_A1 0xA1
-#define EC_EVENT_BAT_A2 0xA2
-#define EC_EVENT_BAT_A3 0xA3
-#define EC_EVENT_BAT_B1 0xB1
-
-/* ========================================================================== */
-
-
-#define MILLI_TO_MICRO	1000
 
 #define EC_EVENT		0x06	// SCI_EVT ?
 
