@@ -38,7 +38,7 @@ With kernel version `6.11-rc2` by [steev](https://github.com/steev/linux/).
 | Camera | x | |
 | CPUfreq | works | |
 | Display | x | [There](https://linaro.github.io/msm/soc/sc8280xp) is no DSI driver for SC8280XP now. I added some patches to *patch sets* folder, but still not work |
-| Display sensors | x | ACPI call it so, for rotation detect, light detect, etc. added pinctrl nodes, but sc8280xp dt does not add SLPI node(unwise to reverse this node) |
+| Display sensors | x | ACPI call it so, for rotation detect, light detect, etc. Added pinctrl nodes, slpi nodes, but how can we access it? |
 | EFI variables | works | with the [patch](./patch\ sets/fix/0001-firmware-qcom-uefisecapp-add-Huawei-Matebook-E-GO.patch). |
 | EC(WIP) | partial | Battery and adapter status, maybe modern standby |
 | Fingerprint reader | x | mbn firmwares related.(check your Windows driver repo) x13s one was introduce from [commit](https://github.com/torvalds/linux/commit/d280fe309b88b337a9b26f96b7a9d9aa6d6c3a0f). |
@@ -49,7 +49,7 @@ With kernel version `6.11-rc2` by [steev](https://github.com/steev/linux/).
 | NVMe SSD | works | |
 | PCIe (x4) | works | |
 | Power key | works | |
-| Remoteproc | partial | adsp, cdsp, not sdsp(sensors related) |
+| Remoteproc | works | adsp, cdsp, sdsp(sensors related, see [below](./#SLPI)) |
 | RTC | works | |
 | Suspend | works | s2idle |
 | Thermal sensors | works | partial I think |
@@ -64,7 +64,7 @@ With kernel version `6.11-rc2` by [steev](https://github.com/steev/linux/).
 | Volumn keys | works | |
 | Watchdog | works | |
 | Wi-Fi | works | use the 2.4 GHz band for stability. |
-| WMI related features(WIP)| partial | charging control, FN lock, smart charge, thermal sensors and so on(undiscoverd things due to its meaning is unknown) |
+| WMI related features| partial | charging control, FN lock, smart charge, thermal sensors and so on(undiscoverd things due to its meaning is unknown) |
 
 ## Audio
 Recently, use the X13s' profile. \
@@ -107,6 +107,14 @@ I don't know these sensors for which devices, but you can read them \
 
 ## Features spoilers
 [battery](feature_spoliers/battery_features.png)
+
+## SLPI
+SLPI(Sensor Low Power Island), [more details](https://lore.kernel.org/linux-devicetree/20230406173148.28309-1-me@dylanvanassche.be/).
+```
+[    2.606897] remoteproc remoteproc2: remote processor 2400000.remoteproc is now up
+[    2.613505] qcom,fastrpc 2400000.remoteproc:glink-edge.fastrpcglink-apps-dsp.-1.-1: no reserved DMA memory for FASTRPC
+```
+The firmware of slpi can be loaded, you can also find `/dev/fastrpc-sdsp`, not support `IOMMU` for now. Even though, how can I access sensors?
 
 ## Progress
 Suspended(Since 08/25/2024), due to real life things.
