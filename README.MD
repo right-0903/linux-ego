@@ -83,6 +83,10 @@ The values would not be saved after you shut down and plugged out, the default v
 ACTION=="add", SUBSYSTEM=="platform", KERNEL=="gaokun-wmi", ATTR{charge_control_thresholds}="55 60"
 ```
 
+## Camera
+* front: hi846 or s5k4h7
+* rear: ov13b10 or s5k3l6
+
 ## Display
 There are too many unknowns(dsi support, dual dsi with video mode dsc, gpio, power supply, backlight, etc), no actual progress can be confirmed, I have uploaded all my progress, if you have an idea, then go ahead.
 
