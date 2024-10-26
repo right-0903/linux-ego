@@ -26,12 +26,12 @@ The DT works with steev's latest branch. You should extract the firmwares requir
 
 Refer to [this](https://github.com/jhovold/linux/wiki/X13s) as well.
 
-With kernel version `6.11-rc2` by [steev](https://github.com/steev/linux/).
+With kernel version `6.11` by [steev](https://github.com/steev/linux/).
 
 | Feature | Status | Note |
 | ------- | ------ | ---- |
 | Audio  | works | see [below](#audio) |
-| Backlight | x |  |
+| Backlight | x | DSI DCS-based backlight control, control method had been figured out, power supply and how to enable keep unknown |
 | Battery | works | with my ec driver, cycle count is also supported |
 | Bluetooth | partial | paired and connected with my android phone, but keep disconnected with my LinkBuds S |
 | Camera | x | |
@@ -88,6 +88,52 @@ ACTION=="add", SUBSYSTEM=="platform", KERNEL=="gaokun-wmi", ATTR{charge_control_
 
 ## Display
 There are too many unknowns(dsi support, dual dsi with video mode dsc, gpio, power supply, backlight, etc), no actual progress can be confirmed, I have uploaded all my progress, if you have an idea, then go ahead.
+
+### KMS pipeline
+
+```
++-------------+      +-------+
+| framebuffer | ---> | plane |\
++-------------+      +-------+ \      +------+      +---------+      +---------------+      +-----------+
+                                |---> | CRTC | ---> | encoder | ---> | dsi connector | ---> | dsi panel | 
++-------------+      +-------+ /      +------+      +---------+      +---------------+      +-----------+
+| framebuffer | ---> | plane |/
++-------------+      +-------+
+```
+
+`framebuffer` should be okay, as we can capture [screenshot]((./feature_spoliers/gpu.png)). `plane` and `CRTC` are unsure, but information from debugfs indicate primary plane and cursor plane are alright. There are many issues with DPU encoders, dual-dsi support issue, dsi video mode dsc support issue, etc. Upstream has been committing patches to fix them. If other parts function well, panel should show garbled or something else. As for connector, I guess they have no plan to support, there are few devices shipped with dsi panel. I have added support for dsi and dsi phy, which is guessing based on `SM8350` and `SM8450`. Also, I have added support for DSI panel.
+
+Some issues:
+* dsi fifo error: `dsi_err_worker: status=4`, this shows why fps is so slow `vblank fps:1 count:485 total:398715ms total_framecount:445`. During the probe of panel, after we sent initial code to dsi(prepare), then dpu would send video stream to dsi, if we created a backlight device previously, KMS would turn on it for us(enable), but we would get `msm_dsi ae94000.dsi: [drm:dsi_cmds2buf_tx [msm]] *ERROR* wait for video done timed out`, dual-dsi are busy handling video data. There should be issues with dsi.
+```
+cat /sys/kernel/debug/dri/ae01000.display-controller/crtc-0/status
+crtc:87 width:1600 height:2560
+
+        mixer:0 ctl:0 width:800 height:2560
+        mixer:1 ctl:0 width:800 height:2560
+
+        plane:39 stage:1
+        fb:94 image format:AR30 wxh:1600x2560 cpp[0]:4 cpp[1]:0 cpp[2]:0 cpp[3]:0
+        modifier:360287970189639681
+        pitches[0]:    6400 pitches[1]:       0 pitches[2]:       0 pitches[3]:       0
+        offsets[0]:       0 offsets[1]:       0 offsets[2]:       0 offsets[3]:       0
+        src_x:   0 src_y:   0 src_w:104857600 src_h:167772160
+        dst x:   0 dst_y:   0 dst_w:1600 dst_h:2560
+        sspp[0]:sspp_0
+        multirect[0]: mode: 0 index: 0
+
+        plane:75 stage:2
+        fb:92 image format:AR30 wxh:512x512 cpp[0]:4 cpp[1]:0 cpp[2]:0 cpp[3]:0
+        modifier:       0
+        pitches[0]:    2048 pitches[1]:       0 pitches[2]:       0 pitches[3]:       0
+        offsets[0]:       0 offsets[1]:       0 offsets[2]:       0 offsets[3]:       0
+        src_x:   0 src_y:   0 src_w:33554432 src_h:33554432
+        dst x: 318 dst_y:1251 dst_w: 512 dst_h: 512
+        sspp[0]:sspp_10
+        multirect[0]: mode: 0 index: 0
+
+vblank fps:1 count:485 total:398715ms total_framecount:445
+```
 
 ## FN Lock
 `echo 0/1 > /sys/devices/platform/gaokun-wmi/fn_lock_state` \
