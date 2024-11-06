@@ -15,7 +15,7 @@ This project mainly refers to the following projects:
 I am just an amateur, a Linux noob, not educated with formal CS courses. You should never believe what I say below, except this sentence. I am not responsible for your actions; you do this all at your own risk!
 
 ## Kernel
-Use steev or jhovold one with default config and `simplefb` enabled. BTW, I have a simple workflow for it.
+Use steev or jhovold one with default config and `simplefb` enabled.
 
 Kernel parameter: `clk_ignore_unused pd_ignore_unused arm64.nopauth efi=noruntime`
 
@@ -31,7 +31,7 @@ With kernel version `6.11` by [steev](https://github.com/steev/linux/).
 | Feature | Status | Note |
 | ------- | ------ | ---- |
 | Audio  | works | see [below](#audio) |
-| Backlight | x | DSI DCS-based backlight control, control method had been figured out, power supply and how to enable keep unknown |
+| Backlight | x | DSI DCS-based backlight control, control method had been figured out. There is an I2C baclkight IC, power supply and how to enable keep unknown |
 | Battery | works | with my ec driver, cycle count is also supported |
 | Bluetooth | partial | paired and connected with my android phone, but keep disconnected with my LinkBuds S |
 | Camera | x | |

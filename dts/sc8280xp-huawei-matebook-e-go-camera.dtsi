@@ -1,0 +1,118 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022, Linaro Limited
+ */
+
+#include <dt-bindings/leds/common.h>
+
+/ {
+
+	leds {
+		compatible = "gpio-leds";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_indicator_en>;
+
+		led-camera-indicator {
+			label = "white:camera-indicator";
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_WHITE>;
+			gpios = <&tlmm 93 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "none";
+			default-state = "off";
+			/* Reuse as a panic indicator until we get a "camera on" trigger */
+			panic-indicator;
+		};
+	};
+};
+
+
+&camss {
+	vdda-phy-supply = <&vreg_l6d>;
+	vdda-pll-supply = <&vreg_l4d>;
+	status = "okay";
+/*	ports {
+		port@0 {
+			csiphy0_lanes01_ep: endpoint@0 {
+				reg = <0>;
+				clock-lanes = <7>;
+				data-lanes = <0 1>;
+				remote-endpoint = <&ov5675_ep>; // FIXME
+			};
+		};
+	};
+*/
+};
+
+&cci0 {
+	// 113 114 115 116
+	status = "okay";
+};
+
+&cci1 {
+	// 10  11  123 124
+	status = "okay";
+};
+
+&cci2 {
+	// 12  13  117 118
+	status = "okay";
+};
+
+&cci3 {
+	// 145 146 164 165
+	status = "okay";
+};
+
+/*
+&cci2_i2c1 {
+
+	camera@10 {
+		compatible = "ovti,ov5675"; // FIXME
+		reg = <0x10>; // FIXME
+		reset-gpios = <&tlmm 15 GPIO_ACTIVE_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_rgb_default>;
+		clocks = <&camcc CAMCC_MCLK3_CLK>;
+		orientation = <0>;	// Front facing
+		avdd-supply = <&vreg_l6q>;
+		dvdd-supply = <&vreg_l2q>;
+		dovdd-supply = <&vreg_l7q>;
+		port {
+			ov5675_ep: endpoint {
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+				link-frequencies = /bits/ 64 <450000000>;
+				remote-endpoint = <&csiphy0_lanes01_ep>;
+			};
+		};
+	};
+};
+*/
+
+&tlmm {
+	cam_indicator_en: cam-indicator-en-state {
+		pins = "gpio93"; // 34 rear flash
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+/*
+	cam_rgb_default: cam-rgb-default-state {
+		mclk-pins {
+			pins = "gpio17";
+			function = "cam_mclk";
+			drive-strength = <16>;
+			bias-disable;
+		};
+		sc-rgb-xshut-n-pins {
+			pins = "gpio15";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+*/
+};
