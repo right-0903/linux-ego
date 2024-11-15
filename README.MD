@@ -57,13 +57,20 @@ With kernel version `6.11` by [steev](https://github.com/steev/linux/).
 | TPM | x | |
 | USB | works | |
 | USB-PD | unsure | not sure if it triggers the PD protocol |
-| USB-C DisplayPort Alt Mode | partial | edid and modes can be read, but there is no video signal. maybe one day EC done, huawei does not use the pmic glink framework, it uses interface from EC |
+| USB-C DisplayPort Alt Mode | works | coming soon |
 | Video acceleration | unsure | depends on the main display driver status |
 | Virtualisation | x | |
 | Volumn keys | works | |
 | Watchdog | works | |
 | Wi-Fi | works | use the 2.4 GHz band for stability. |
 | WMI related features| partial | charging control, FN lock, smart charge, thermal sensors and so on(undiscoverd things due to its meaning is unknown) |
+
+## Altmode
+Specific insert orientation required, support 2-lane(up to 1080P@60HZ) only for now, Johan mentioned [this](https://github.com/jhovold/linux/wiki/X13s#USB) also.
+
+BTW, there are some issues(failed to register altmode, failed to reset PPM, which cause a UCSI registeration failure, race conditions, data inconsistency, etc), after all, I havn't mastered the whole procedure yet(Reversing is like that, you can't ask for too much or perfect, lol), some of them are related to Qualcomm's quirks, some are my code issues. I am working on it to minimize the potential harm to your device. So it won't be released until I finish it.
+
+![](./feature_spoliers/usbc_altmode.png)
 
 ## Audio
 Recently, use the X13s' profile. \
@@ -169,4 +176,4 @@ The firmware of slpi can be loaded, you can also find `/dev/fastrpc-sdsp`, not s
 Suspended(Since 08/25/2024), due to real life things.
 
 ## Help wanted
-I am occupied with real life things, I spend much free time on it, if someone can help me test features, that will be awesome. Also, as I am an amateur, I am happy to receive suggestions from coding, ACPI/DSDT/SSDT reversing, working mechanism of UCSI, DSI panel, etc.
+I am occupied with real life things, I spend much free time on it, if someone can help me test features, that will be awesome. Also, as I am an amateur, I am happy to receive suggestions from coding, ACPI/DSDT/SSDT reversing, working mechanism of DSI panel, etc.
