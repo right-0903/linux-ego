@@ -111,36 +111,10 @@ There are too many unknowns(dsi support, dual dsi with video mode dsc, gpio, pow
 `framebuffer` should be okay, as we can capture [screenshot]((./feature_spoliers/gpu.png)). `plane` and `CRTC` are unsure, but information from debugfs indicate primary plane and cursor plane are alright. There are many issues with DPU encoders, dual-dsi support issue, dsi video mode dsc support issue, etc. Upstream has been committing patches to fix them. If other parts function well, panel should show garbled or something else. As for connector, I guess they have no plan to support, there are few devices shipped with dsi panel. I have added support for dsi and dsi phy, which is guessing based on `SM8350` and `SM8450`. Also, I have added support for DSI panel.
 
 Some issues:
-* dsi fifo error: `dsi_err_worker: status=4`, this shows why fps is so slow `vblank fps:1 count:485 total:398715ms total_framecount:445`. During the probe of panel, after we sent initial code to dsi(prepare), then dpu would send video stream to dsi, if we created a backlight device previously, KMS would turn on it for us(enable), but we would get `msm_dsi ae94000.dsi: [drm:dsi_cmds2buf_tx [msm]] *ERROR* wait for video done timed out`, dual-dsi are busy handling video data. There should be issues with dsi.
-```
-cat /sys/kernel/debug/dri/ae01000.display-controller/crtc-0/status
-crtc:87 width:1600 height:2560
+* dsi fifo error: `dsi_err_worker: status=4`. 
+* backlight: there is a backlight ic which is controlled by i2c, once we enable `msm`(I think the cause is `dpu`), dsi panel reinit, I guess backlight ic would be disabled, in fact, some i2c4 slaves disappeared, I think there must be garbled on screen, we can't see it due to disabled backlight.
 
-        mixer:0 ctl:0 width:800 height:2560
-        mixer:1 ctl:0 width:800 height:2560
-
-        plane:39 stage:1
-        fb:94 image format:AR30 wxh:1600x2560 cpp[0]:4 cpp[1]:0 cpp[2]:0 cpp[3]:0
-        modifier:360287970189639681
-        pitches[0]:    6400 pitches[1]:       0 pitches[2]:       0 pitches[3]:       0
-        offsets[0]:       0 offsets[1]:       0 offsets[2]:       0 offsets[3]:       0
-        src_x:   0 src_y:   0 src_w:104857600 src_h:167772160
-        dst x:   0 dst_y:   0 dst_w:1600 dst_h:2560
-        sspp[0]:sspp_0
-        multirect[0]: mode: 0 index: 0
-
-        plane:75 stage:2
-        fb:92 image format:AR30 wxh:512x512 cpp[0]:4 cpp[1]:0 cpp[2]:0 cpp[3]:0
-        modifier:       0
-        pitches[0]:    2048 pitches[1]:       0 pitches[2]:       0 pitches[3]:       0
-        offsets[0]:       0 offsets[1]:       0 offsets[2]:       0 offsets[3]:       0
-        src_x:   0 src_y:   0 src_w:33554432 src_h:33554432
-        dst x: 318 dst_y:1251 dst_w: 512 dst_h: 512
-        sspp[0]:sspp_10
-        multirect[0]: mode: 0 index: 0
-
-vblank fps:1 count:485 total:398715ms total_framecount:445
-```
+During the probe of panel, after we sent initial code to dsi(prepare), then dpu would send video stream to dsi, if we created a backlight device previously, KMS would turn on it for us(enable), but we would get `msm_dsi ae94000.dsi: [drm:dsi_cmds2buf_tx [msm]] *ERROR* wait for video done timed out`, because backlight ic wouldn't respond.
 
 ## FN Lock
 `echo 0/1 > /sys/devices/platform/gaokun-wmi/fn_lock_state` \
@@ -173,7 +147,7 @@ SLPI(Sensor Low Power Island), [more details](https://lore.kernel.org/linux-devi
 The firmware of slpi can be loaded, you can also find `/dev/fastrpc-sdsp`, not support `IOMMU` for now. Even though, how can I access sensors?
 
 ## Progress
-Suspended(Since 08/25/2024), due to real life things.
+Inactive(Since 10/2024), due to real life things.
 
 ## Help wanted
 I am occupied with real life things, I spend much free time on it, if someone can help me test features, that will be awesome. Also, as I am an amateur, I am happy to receive suggestions from coding, ACPI/DSDT/SSDT reversing, working mechanism of DSI panel, etc.
