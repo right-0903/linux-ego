@@ -70,7 +70,23 @@ Specific insert orientation required, support 2-lane(up to 1080P@60HZ) only for 
 
 BTW, there are some issues(failed to register altmode, failed to reset PPM, which cause a UCSI registeration failure, race conditions, data inconsistency, etc), after all, I havn't mastered the whole procedure yet(Reversing is like that, you can't ask for too much or perfect, lol), some of them are related to Qualcomm's quirks, some are my code issues. I am working on it to minimize the potential harm to your device. So it won't be released until I finish it.
 
+Some people have asked me for an early access to the altmode part code. Now I explain here.
+### Todo list
+1. [x] refactor ECCD implementation to avoid data inconsistency(local repo finished, replacement work still remains)
+1. [x] refactor UCSI part code(local repo finished)
+1. [x] add a sysfs to tweak EC(to get your EC back in case ..., local repo finished)
+1. [ ] add the altmode part code to UCSI
+1. [ ] fix Qualcomm's quirks
+
+Chances are that you keep rebooting, failed to register altmode, or some other things, until one time no error here, you may get it work.
+
+Remote repo is far behind local repo due to stability, and my local repo is quite different. \
+Why don't you create another branch for it? No, if I open it, I should clarif my intentions, I am tired of constant maintenance, I don't like commit every piece of modification, because I start over again when my new ideas don't work, I will most likely delete all I have written. That is time-wasting to keep track those things. Every time I work on one part only, I can maintain context in my brain, until things are settled, I will update my local repo. After some tests, I will plan to update remote repo.
+
+About ETA, I can't promise due to recent health reasons. And, as an amateur, I have my own life, my coding time is flexible, 
+
 ![](./feature_spoliers/usbc_altmode.png)
+
 
 ## Audio
 Recently, use the X13s' profile. \
