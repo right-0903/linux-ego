@@ -78,15 +78,15 @@
 		compatible = "gpio-keys";
 
 		pinctrl-names = "default";
-		pinctrl-0 = <&mode_pin_active &vol_up_n>;
-
+		pinctrl-0 = <&mode_pin_active>, <&vol_up_n>;
+/*
 		switch-mode {
 			gpios = <&tlmm 26 IRQ_TYPE_EDGE_BOTH>;
 			linux,input-type = <EV_SW>;
 			linux,code = <SW_TABLET_MODE>;
 			wakeup-source;
 		};
-
+*/
 		key-vol-up {
 			label = "Volume Up";
 			gpios = <&pmc8280_1_gpios 6 GPIO_ACTIVE_LOW>;
