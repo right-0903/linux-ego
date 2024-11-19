@@ -725,31 +725,9 @@
 			power-role = "dual";
 			data-role = "dual";
 
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@0 {
-					reg = <0>;
-
-					ucsi0_hs_in: endpoint { // highspeed, usb2.0
-						remote-endpoint = <&usb_0_dwc3_hs>;
-					};
-				};
-
-				port@1 {
-					reg = <1>;
-
-					ucsi0_ss_in: endpoint { // superspeed, usb3.0
-						remote-endpoint = <&usb_0_qmpphy_out>;
-					};
-				};
-
-				port@2 {
-					reg = <2>;
-
-					ucsi0_sbu: endpoint {
-					};
+			port {
+				ucsi0_ss_in: endpoint { // superspeed, usb3.0
+					remote-endpoint = <&usb_0_qmpphy_out>;
 				};
 			};
 		};
@@ -760,33 +738,12 @@
 			power-role = "dual";
 			data-role = "dual";
 
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@0 {
-					reg = <0>;
-
-					ucsi1_hs_in: endpoint {
-						remote-endpoint = <&usb_1_dwc3_hs>;
-					};
-				};
-
-				port@1 {
-					reg = <1>;
-
-					ucsi1_ss_in: endpoint {
-						remote-endpoint = <&usb_1_qmpphy_out>;
-					};
-				};
-
-				port@2 {
-					reg = <2>;
-
-					ucsi1_sbu: endpoint {
-					};
+			port {
+				ucsi1_ss_in: endpoint {
+					remote-endpoint = <&usb_1_qmpphy_out>;
 				};
 			};
+
 		};
 
 	};
@@ -1197,10 +1154,6 @@
 	dr_mode = "host";
 };
 
-&usb_0_dwc3_hs {
-	remote-endpoint = <&ucsi0_hs_in>;
-};
-
 &usb_0_hsphy {
 	vdda-pll-supply = <&vreg_l9d>;
 	vdda18-supply = <&vreg_l1c>;
@@ -1232,10 +1185,6 @@
 
 &usb_1_dwc3 {
 	dr_mode = "host";
-};
-
-&usb_1_dwc3_hs {
-	remote-endpoint = <&ucsi1_hs_in>;
 };
 
 &usb_1_hsphy {
