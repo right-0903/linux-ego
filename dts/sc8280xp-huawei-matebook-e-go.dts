@@ -713,9 +713,6 @@
 
 		interrupts-extended = <&tlmm 107 IRQ_TYPE_LEVEL_LOW>;
 
-		pinctrl-names = "default";
-		pinctrl-0 = <&ec_int_state>;
-
 		#address-cells = <1>;
 		#size-cells = <0>;
 
