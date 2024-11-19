@@ -225,10 +225,13 @@
 
 		wlan-enable-gpios = <&tlmm 134 GPIO_ACTIVE_HIGH>;
 		bt-enable-gpios = <&tlmm 133 GPIO_ACTIVE_HIGH>;
+		swctrl-gpios = <&tlmm 132 GPIO_ACTIVE_HIGH>;
 
 		vddio-supply = <&vreg_s10b>;
 		vddaon-supply = <&vreg_s12b>;
 		vddpmu-supply = <&vreg_s12b>;
+		vddpmumx-supply = <&vreg_s12b>;
+		vddpmucx-supply = <&vreg_s12b>;
 		vddrfa0p95-supply = <&vreg_s12b>;
 		vddrfa1p3-supply = <&vreg_s11b>;
 		vddrfa1p9-supply = <&vreg_s1c>;
