@@ -426,6 +426,77 @@ static ssize_t temperature_show(struct device *dev,
 
 static DEVICE_ATTR_RO(temperature);
 
+static char debug_buf[0x300];
+static ssize_t debug_show(struct device *dev,
+						  struct device_attribute *attr,
+						  char *buf)
+{
+	// cat to read
+	return sysfs_emit(buf, "%s\n", debug_buf);
+}
+
+static ssize_t debug_store(struct device *dev,
+						   struct device_attribute *attr,
+						   const char *buf, size_t size)
+{
+	// redirect to write
+	struct gaokun_wmi *ecwmi = dev_get_drvdata(dev);
+	u8 args[16], resp[0xff];
+	char *ptr = buf, ch = *ptr;
+	int ret, num, i = 0;
+
+	while(sscanf(ptr, "%i", &num) == 1){
+		args[i++] = num;
+		while(ch != '\0' && ch == ' ')
+			ch = *++ptr;
+		while(ch != '\0' && ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || ch == 'x'))
+			ch = *++ptr;
+	}
+
+	ret = gaokun_ec_request(ecwmi->ec, args, args[i - 1], resp);
+	if (ret)
+		return -EIO;
+
+	int olen = args[i - 1];
+	int out;
+	int len = 0;
+
+	ptr = resp;
+	while(olen > 0){
+		out = (olen > 16) ? 16 : olen;
+
+		len += sprintf(debug_buf + len, "%*ph\n", out, ptr);
+		ptr += 16;
+		olen -= 16;
+	}
+	debug_buf[len - 1] = '\0'; // cancel the last one '\n'
+
+	return size;
+}
+static DEVICE_ATTR_RW(debug);
+
+static ssize_t port_update_store(struct device *dev,
+								 struct device_attribute *attr,
+								 const char *buf, size_t size)
+{
+	struct gaokun_wmi *ecwmi = dev_get_drvdata(dev);
+	int ret, port;
+	u8 resp[4];
+
+	if (sscanf(buf, "%d", &port) != 1)
+		return -EINVAL;
+
+	if (port != 1 || port != 2 || port != 0)  /* port range: 0, 1, 2 */
+		return -EINVAL;
+
+	ret = gaokun_ec_request(ecwmi->ec, (u8 []){0x03, 0xD2, 1, port}, 4, resp);
+	if (ret)
+		return -EIO;
+
+	return size;
+}
+static DEVICE_ATTR_WO(port_update);
+
 static struct attribute *gaokun_wmi_features_attrs[] = {
 	&dev_attr_charge_control_start_threshold.attr,
 	&dev_attr_charge_control_end_threshold.attr,
@@ -434,6 +505,8 @@ static struct attribute *gaokun_wmi_features_attrs[] = {
 	&dev_attr_smart_charge.attr,
 	&dev_attr_fn_lock_state.attr,
 	&dev_attr_temperature.attr,
+	&dev_attr_port_update.attr,
+	&dev_attr_debug.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(gaokun_wmi_features);
