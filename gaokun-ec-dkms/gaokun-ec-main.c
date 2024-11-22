@@ -8,7 +8,6 @@
  * Copyright (C) 2024 nuvole <mitltlatltl@gmail.com>
  */
 
-#include <asm-generic/unaligned.h>
 #include <linux/auxiliary_bus.h>
 #include <linux/bits.h>
 #include <linux/input.h>
