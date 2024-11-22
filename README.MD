@@ -72,7 +72,7 @@ BTW, there are some issues(failed to register altmode, failed to reset PPM, whic
 
 Some people have asked me for an early access to the altmode part code. Now I explain here.
 ### Todo list
-1. [x] refactor ECCD implementation to avoid data inconsistency(local repo finished, replacement work still remains)
+1. [x] ~refactor ECCD implementation to avoid data inconsistency(local repo finished, replacement work still remains)~ (New paln: try to add an abstracion layer, but the related dsdt implementation is ..., huawei you sucks)
 1. [x] refactor UCSI part code(local repo finished)
 1. [x] add a sysfs to tweak EC(to get your EC back in case ..., local repo finished)
 1. [ ] add the altmode part code to UCSI

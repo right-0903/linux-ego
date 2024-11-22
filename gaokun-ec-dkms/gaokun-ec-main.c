@@ -41,6 +41,26 @@ struct gaokun_ec {
 u8 usb_data[9];
 EXPORT_SYMBOL_GPL(usb_data);
 
+int gaokun_ec_request(struct gaokun_ec *ec, const u8 *req, size_t resp_len,
+					  u8 *resp)
+{
+	mutex_lock(&ec->lock);
+	/* req: mcmd scmd ilen ibuf */
+	i2c_smbus_write_i2c_block_data(ec->client, req[0], req[2] + 2, req + 1);
+
+	usleep_range(2000, 2500);
+	/* resp[0]: request status, resp[1]: resp_len(unreliable), them should
+	 * not be exposed to caller in the fianl code, for encapsulation and
+	 * abstraction barriers.
+	 */
+	i2c_smbus_read_i2c_block_data(ec->client, req[0], resp_len, resp);
+	mutex_unlock(&ec->lock);
+
+	/* the smbus way has a weird behavior, I will add another way later */
+	return *resp = *resp != 2;
+}
+EXPORT_SYMBOL_GPL(gaokun_ec_request);
+
 u8 *ec_command_data(struct gaokun_ec *ec, u8 mcmd, u8 scmd, u8 ilen, const u8 *buf, u8 olen)
 {
 	/* The C implementation of ACPI method ECCD

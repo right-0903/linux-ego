@@ -45,6 +45,7 @@ void gaokun_ec_unregister_notify(struct gaokun_ec *ec, struct notifier_block *nb
 
 
 u8 *ec_command_data(struct gaokun_ec *ec, u8 mcmd, u8 scmd, u8 ilen, const u8 *buf, u8 olen);
+int gaokun_ec_request(struct gaokun_ec *ec, const u8 *req, size_t resp_len, u8 *resp);
 
 
 static inline int ec_read_word_data(struct gaokun_ec *ec, u8 reg_l, u8 reg_h, u16 *data)
