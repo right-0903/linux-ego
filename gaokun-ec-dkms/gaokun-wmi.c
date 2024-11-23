@@ -486,7 +486,7 @@ static ssize_t port_update_store(struct device *dev,
 	if (sscanf(buf, "%d", &port) != 1)
 		return -EINVAL;
 
-	if (port != 1 || port != 2 || port != 0)  /* port range: 0, 1, 2 */
+	if (port != 1 && port != 2 && port != 0)  /* port range: 0, 1, 2 */
 		return -EINVAL;
 
 	ret = gaokun_ec_request(ecwmi->ec, (u8 []){0x03, 0xD2, 1, port}, 4, resp);
