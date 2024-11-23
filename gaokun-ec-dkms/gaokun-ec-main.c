@@ -37,9 +37,6 @@ struct gaokun_ec {
 
 };
 
-u8 usb_data[9];
-EXPORT_SYMBOL_GPL(usb_data);
-
 int gaokun_ec_request(struct gaokun_ec *ec, const u8 *req, size_t resp_len,
 					  u8 *resp)
 {
@@ -171,13 +168,6 @@ static irqreturn_t gaokun_ec_irq_handler(int irq, void *data)
 	case 0x10: case 0x12: case 0x13: case 0x17: case 0x19: case 0x20:
 	case 0x23: case 0xBF: case 0x18: // case 0x21: case 0x22:
 		dev_info(&ec->client->dev, "WMI event triggered\n");
-		break;
-
-	case EC_EVENT_USB:
-		obuf = ec_command_data(ec, 0x03, 0xD3, 0, NULL, 9);
-		pr_info_ratelimited("%s: USB EVENT, DATA: %*ph\n", __func__, 9, obuf);
-		memcpy(usb_data, obuf, 9);
-		blocking_notifier_call_chain(&ec->notifier_list, id, ec);
 		break;
 
 	default:
@@ -316,16 +306,6 @@ static int gaokun_ec_probe(struct i2c_client *client)
 
 	/* Battery and Adapter */
 	ret = gaokun_aux_init(dev, "psy", ec);
-	if (ret)
-		return ret;
-
-	/* UCSI */
-	ret = gaokun_aux_init(dev, "ucsi", ec);
-	if (ret)
-		return ret;
-
-	/* Altmode */
-	ret = gaokun_aux_init(dev, "altmode", ec);
 	if (ret)
 		return ret;
 
