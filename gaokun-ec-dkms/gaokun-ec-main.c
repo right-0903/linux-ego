@@ -260,6 +260,8 @@ static int gaokun_aux_init(struct device *parent, const char *name,
 	adev->dev.parent = parent;
 	adev->dev.release = gaokun_aux_release;
 	adev->dev.platform_data = ec;
+	/* Allow aux devices to access parent's DT nodes directly */
+	device_set_of_node_from_dev(&adev->dev, parent);
 
 	ret = auxiliary_device_init(adev);
 	if (ret) {
@@ -311,6 +313,11 @@ static int gaokun_ec_probe(struct i2c_client *client)
 
 	/* WMI */
 	ret = gaokun_aux_init(dev, "wmi", ec);
+	if (ret)
+		return ret;
+
+	/* UCSI */
+	ret = gaokun_aux_init(dev, "ucsi", ec);
 	if (ret)
 		return ret;
 

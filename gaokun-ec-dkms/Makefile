@@ -6,7 +6,8 @@ obj-m += $(MODNAME).o
 $(MODNAME)-y += $(MODNAME)-main.o
 
 obj-m += gaokun-battery.o \
-	 gaokun-wmi.o
+	 gaokun-wmi.o     \
+	 gaokun-ucsi.o
 
 KVER = $(shell uname -r)
 KDIR = /lib/modules/$(KVER)/build
