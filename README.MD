@@ -56,7 +56,7 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 | Touchscreen | partial | weird behavior |
 | TPM | x | |
 | USB | works | |
-| USB-PD | works | In alt modes, sink and source |
+| USB-PD | works | With UCSI EC driver, charging power is up to 40W compared to 20w before. In alt modes, can be used as sink and source |
 | USB-C DisplayPort Alt Mode | works | initial support |
 | Video acceleration | unsure | depends on the main display driver status |
 | Virtualisation | x | |
