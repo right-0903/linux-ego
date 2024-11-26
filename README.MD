@@ -61,7 +61,7 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 | Video acceleration | unsure | depends on the main display driver status |
 | Virtualisation | x | |
 | Volumn keys | works | |
-| Watchdog | works | |
+| Watchdog | partial | One in sc8280xp works, another in EC not(acpi method identifiers have not been figured out yet) |
 | Wi-Fi | works | use the 2.4 GHz band for stability. |
 | WMI related features| partial | charging control, FN lock, smart charge, thermal sensors and so on(undiscoverd things due to its meaning is unknown) |
 
