@@ -6,6 +6,7 @@
 #include <linux/delay.h>
 #include <linux/i2c.h>
 
+#define DATA_OFFSET		0x2
 
 #define EC_EVENT		0x06	// SCI_EVT ?
 
@@ -41,30 +42,18 @@ u8 *ec_command_data(struct gaokun_ec *ec, u8 mcmd, u8 scmd, u8 ilen, const u8 *b
 int gaokun_ec_request(struct gaokun_ec *ec, const u8 *req, size_t resp_len, u8 *resp);
 
 
-static inline int ec_read_word_data(struct gaokun_ec *ec, u8 reg_l, u8 reg_h, u16 *data)
+int gaokun_ec_write(struct gaokun_ec *ec, u8 *req);
+int gaokun_ec_multi_read(struct gaokun_ec *ec, u8 reg, size_t resp_len, u8 *resp);
+
+static inline int gaokun_ec_read_word(struct gaokun_ec *ec, u8 reg, u16 *word)
 {
-	u8 *obuf;
-	int offset;
-	offset = 2; // STAT BLEN DAT0 DAT1 ...
-
-	obuf = ec_command_data(ec, 0x2, EC_READ, 1, (u8 []){reg_l}, 4);
-
-/*	// do not handle for now
-	if(obuf[0]){
-		return -
-	}
-*/
-	// little endian
-	*data = obuf[offset];
-
-	usleep_range(2500, 3000); // Sleep (0x02)
-
-	obuf = ec_command_data(ec, 0x2, EC_READ, 1, (u8 []){reg_h}, 4);
-	*data |= obuf[offset] << 8;
-
-	return 0;
+	return gaokun_ec_multi_read(ec, reg, 2, (u8 *)word);
 }
 
+static inline int gaokun_ec_read_byte(struct gaokun_ec *ec, u8 reg, u8 *byte)
+{
+	return gaokun_ec_multi_read(ec, reg, 1, byte);
+}
 
 
 #endif /* __GAOKUN_EC_H__ */

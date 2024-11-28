@@ -57,6 +57,35 @@ int gaokun_ec_request(struct gaokun_ec *ec, const u8 *req, size_t resp_len,
 }
 EXPORT_SYMBOL_GPL(gaokun_ec_request);
 
+int gaokun_ec_write(struct gaokun_ec *ec, u8 *req)
+{
+	u8 buf[DATA_OFFSET];
+
+	return gaokun_ec_request(ec, req, sizeof(buf), buf);
+}
+EXPORT_SYMBOL_GPL(gaokun_ec_write);
+
+int gaokun_ec_multi_read(struct gaokun_ec *ec, u8 reg, size_t resp_len,
+						 u8 *resp)
+{
+	/* read resp_len registers from reg */
+	int i, ret;
+	u8 _resp[3];
+	u8 req[4] = {0x02, EC_READ, 1, };
+
+	for (i = 0; i < resp_len && reg <= 0xff; ++i) {
+		req[3] = reg++;
+		ret = gaokun_ec_request(ec, req, sizeof(_resp), _resp);
+		if (ret)
+			return -EIO;
+		resp[i] = _resp[2];
+		usleep_range(2000, 2500);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(gaokun_ec_multi_read);
+
 u8 *ec_command_data(struct gaokun_ec *ec, u8 mcmd, u8 scmd, u8 ilen, const u8 *buf, u8 olen)
 {
 	/* The C implementation of ACPI method ECCD
