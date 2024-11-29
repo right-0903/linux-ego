@@ -101,7 +101,8 @@ About ETA, I can't promise due to recent health reasons. And, as an amateur, I h
 Recently, use the X13s' profile. \
 `sed -i 's/LENOVO.*ThinkPad X13s.*/LENOVO.*ThinkPad X13s.*|HUAWEI.*MateBook E.*\"/' /usr/share/alsa/ucm2/Qualcomm/sc8280xp/sc8280xp.conf`
 
-## Charging control
+## Battery
+### Charging control
 `echo 'start stop' /sys/devices/platform/gaokun-wmi/charge_control_thresholds`
 
 Clarification from [TLP](https://linrunner.de/tlp/faq/battery.html).
@@ -113,6 +114,21 @@ The values would not be saved after you shut down and plugged out, the default v
 ```
 ACTION=="add", SUBSYSTEM=="platform", KERNEL=="gaokun-wmi", ATTR{charge_control_thresholds}="55 60"
 ```
+
+### Smart charging
+Explanation, refer to Huawei support [page](https://consumer.huawei.com/en/support/content/en-us15783714/) \
+`cat /sys/devices/platform/gaokun-wmi/smart_charge` \
+`cat /sys/devices/platform/gaokun-wmi/smart_charge_param`
+
+> When the laptop is just connected to a power adapter, it starts charging until the battery level reaches 70% if the battery level is lower than 70%, or the battery level does not increase if the battery level is 70% or higher. This is normal.
+
+> When the power adapter is always connected, the laptop starts charging if its battery level is lower than 40%, and stops charging when the battery level reaches 70%.
+
+`smart_charge`: default are 4 72 40 70, correspond to charging mode, delay, start, stop, after 72 hours, charging level is limited to 70%.
+
+`smart_charge_param`: enable or not? Recently, I can't set back to 0 again, if it is 1, then charge power would be up to 23.
+
+If you set charging control on Windows, like 90%, then `smart_charge` would be `1 72 85 90`, `charge_control_thresholds` would be reset to `85 90` also.
 
 ## Camera
 * front: hi846 or s5k4h7
@@ -146,15 +162,6 @@ During the probe of panel, after we sent initial code to dsi(prepare), then dpu 
 `0`: disable the fn key(hotkey first, such as press `F1` to decrease brightness) \
 `1`: enable the fn key(function key first), you can only trigger hotkey with `Fn + F1-12` \
 BTW, you can press `Fn` key(light on) to reverse it temporarily.
-
-## Smart charging
-I know less about the meaning of arguments, but it is implemented, check and do your own investigation, feel free to give me feedback \
-`cat /sys/devices/platform/gaokun-wmi/smart_charge` \
-`cat /sys/devices/platform/gaokun-wmi/smart_charge_param`
-
-`smart_charge`: default are 4 72 40 70, correspond to charging mode, delay, start, stop, after 72 hours, charging level is limited to 70%.
-
-`smart_charge_param`: enable or not? I am not sure.
 
 ## Thermal Sensors from EC
 I don't know these sensors for which devices, but you can read them \
