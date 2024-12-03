@@ -180,6 +180,42 @@ static int gaokun_ucsi_async_control(struct ucsi *ucsi, u64 command)
 	return gaokun_ec_ucsi_write(uec->ec, buf);
 }
 
+static int gaokun_ucsi_sync_control(struct ucsi *ucsi, u64 command)
+{
+	bool ack = UCSI_COMMAND(command) == UCSI_ACK_CC_CI;
+	int ret, i;
+
+	if (ack)
+		set_bit(ACK_PENDING, &ucsi->flags);
+	else
+		set_bit(COMMAND_PENDING, &ucsi->flags);
+
+	for (i = 0; i < 3; ++i) {
+		ret = gaokun_ucsi_async_control(ucsi, command);
+		if (ret)
+			goto out_clear_bit;
+
+		/* HACK: if we don't capture the correct signal, then retry after 2s */
+		if (wait_for_completion_timeout(&ucsi->complete, 2 * HZ))
+			goto out_clear_bit;
+
+		u32 cci;
+		gaokun_ucsi_read_cci(ucsi, &cci);
+		pr_err("TIMEOUT: ucsi_cci: %*ph\n", sizeof(cci), (u8 *)&cci);
+	}
+
+	return -110; /* TIMEOUT */
+
+out_clear_bit:
+	if (ack)
+		clear_bit(ACK_PENDING, &ucsi->flags);
+	else
+		clear_bit(COMMAND_PENDING, &ucsi->flags);
+
+	return ret;
+}
+
+
 static void gaokun_ucsi_update_connector(struct ucsi_connector *con)
 {
 	struct gaokun_ucsi *uec = ucsi_get_drvdata(con->ucsi);
@@ -213,7 +249,7 @@ const struct ucsi_operations gaokun_ucsi_ops = {
 	.read_version = gaokun_ucsi_read_version,
 	.read_cci = gaokun_ucsi_read_cci,
 	.read_message_in = gaokun_ucsi_read_message_in,
-	.sync_control = ucsi_sync_control_common,
+	.sync_control = gaokun_ucsi_sync_control,
 	.async_control = gaokun_ucsi_async_control,
 	.update_connector = gaokun_ucsi_update_connector,
 	.connector_status = gaokun_ucsi_connector_status,

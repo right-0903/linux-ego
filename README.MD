@@ -68,18 +68,18 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 ## Altmode
 Specific insert orientation required, support 2-lane(up to 1080P@60HZ) only for now, Johan mentioned [this](https://github.com/jhovold/linux/wiki/X13s#USB) also.
 
-BTW, there are some issues(failed to register altmode, failed to reset PPM, which cause a UCSI registeration failure, ~race conditions, data inconsistency,~ etc), after all, I havn't mastered the whole procedure yet(Reversing is like that, you can't ask for too much or perfect, lol), some of them are related to Qualcomm's quirks, ~some are my code issues~. I am working on it to minimize the potential harm to your device. So it won't be released until I finish it.
+BTW, ~there are some issues(failed to register altmode, failed to reset PPM, which cause a UCSI registeration failure, race conditions, data inconsistency, etc)~, after all, I havn't mastered the whole procedure yet(Reversing is like that, you can't ask for too much or perfect, lol), some of them are related to Qualcomm's quirks, ~some are my code issues~. I am working on it to minimize the potential harm to your device. So it won't be released until I finish it.
 
 ~Chances are that you keep rebooting, failed to register altmode, or some other things, until one time no error here, you may get it work.~
 
-We will not reboot now, but we will still reboot it manually to make sure UCSI register normally. Until you don't get
+~We will not reboot now, but we will still reboot it manually to make sure UCSI register normally. Until you don't get~(With new hack, the UCSI driver is quiet reliable now, unlikely to meet these issues)
 ```
 gaokun_ucsi.ucsi gaokun_ec.ucsi.0: error -ETIMEDOUT: PPM init failed
 gaokun_ucsi.ucsi gaokun_ec.ucsi.0: con1: failed to register alt modes
 ```
 (I am not sure if we can reinsert modules to fix.) Then let's plug in(make sure your orientation is not reverse), wait for seconds, if you still not get external display work, check if there are entries in your `dmesg` like `gaokun_ucsi_refresh: USB event triggered, data: 00 06 02 01 08 13 02 00 16`, if not, then try to `sudo sh -c 'echo 0 > /sys/devices/platform/gaokun-wmi/port_update'`, wait for seconds, if not, `sudo sh -c 'echo 1 > /sys/devices/platform/gaokun-wmi/port_update'`, `sudo sh -c 'echo  > /sys/devices/platform/gaokun-wmi/port_update'`. If you get `xxx data: xxx 09 xxx`, that means, your orientation is reverse.
 
-Remember that, replug will not fully work, if you replug, you mostly get no video signal, but if you reboot at that time, logs appear on your external display.
+~Remember that, replug will not fully work, if you replug, you mostly get no video signal, but if you reboot at that time, logs appear on your external display.~
 
 Some people have asked me for an early access to the altmode part code. Now I explain here.
 ### Todo list
