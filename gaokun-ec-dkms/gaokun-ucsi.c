@@ -532,6 +532,8 @@ static int gaokun_ucsi_probe(struct auxiliary_device *adev,
 
 	auxiliary_set_drvdata(adev, uec);
 
+	ssleep(3); /* EC can't handle UCSI properly in the early stage */
+
 	ret = gaokun_ec_register_notify(ec, &uec->nb);
 	if (ret)
 		return ret;

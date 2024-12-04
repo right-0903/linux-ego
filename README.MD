@@ -72,7 +72,7 @@ BTW, ~there are some issues(failed to register altmode, failed to reset PPM, whi
 
 ~Chances are that you keep rebooting, failed to register altmode, or some other things, until one time no error here, you may get it work.~
 
-~We will not reboot now, but we will still reboot it manually to make sure UCSI register normally. Until you don't get~(With new hack, the UCSI driver is quiet reliable now, unlikely to meet these issues)
+~We will not reboot now, but we will still reboot it manually to make sure UCSI register normally. Until you don't get~(With new fixes, the UCSI driver is quiet reliable now, unlikely to meet these issues)
 ```
 gaokun_ucsi.ucsi gaokun_ec.ucsi.0: error -ETIMEDOUT: PPM init failed
 gaokun_ucsi.ucsi gaokun_ec.ucsi.0: con1: failed to register alt modes
