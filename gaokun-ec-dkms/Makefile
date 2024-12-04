@@ -9,6 +9,9 @@ obj-m += gaokun-battery.o \
 	 gaokun-wmi.o     \
 	 gaokun-ucsi.o
 
+gaokun-ucsi-y := gaokun-ucsi-simple.o
+
+
 KVER = $(shell uname -r)
 KDIR = /lib/modules/$(KVER)/build
 MDIR = /usr/src/$(MODNAME)-$(MODVER)
