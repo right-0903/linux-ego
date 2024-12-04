@@ -534,11 +534,11 @@ static int gaokun_ucsi_probe(struct auxiliary_device *adev,
 
 	ssleep(3); /* EC can't handle UCSI properly in the early stage */
 
-	ret = gaokun_ec_register_notify(ec, &uec->nb);
+	ret = ucsi_register(uec->ucsi);
 	if (ret)
 		return ret;
 
-	return ucsi_register(uec->ucsi);
+	return gaokun_ec_register_notify(ec, &uec->nb);
 }
 
 static void gaokun_ucsi_remove(struct auxiliary_device *adev)
