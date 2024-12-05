@@ -26,18 +26,18 @@
 /* -------------------------------------------------------------------------- */
 /* String Data Reg */
 
-#define EC_BAT_VENDOR			0x01 /* from 0x01 to 0x0F, SUNWODA */
-#define EC_BAT_MODEL			0x11 /* from 0x11 to 0x1F, HB30A8P9ECW-22T */
+#define EC_BAT_VENDOR		0x01 /* from 0x01 to 0x0F, SUNWODA */
+#define EC_BAT_MODEL		0x11 /* from 0x11 to 0x1F, HB30A8P9ECW-22T */
 
-#define EC_ADP_STATUS			0x81
-#define EC_AC_STATUS			BIT(0)
-#define EC_BAT_PRESENT			BIT(1) /* BATC._STA */
+#define EC_ADP_STATUS		0x81
+#define EC_AC_STATUS		BIT(0)
+#define EC_BAT_PRESENT		BIT(1) /* BATC._STA */
 
-#define EC_BAT_STATUS			0x82 /* _BST */
-#define EC_BAT_DISCHARGING		BIT(0)
-#define EC_BAT_CHARGING			BIT(1)
-#define EC_BAT_CRITICAL			BIT(2) /* Low Battery Level */
-#define EC_BAT_FULL				BIT(3)
+#define EC_BAT_STATUS		0x82 /* _BST */
+#define EC_BAT_DISCHARGING	BIT(0)
+#define EC_BAT_CHARGING		BIT(1)
+#define EC_BAT_CRITICAL		BIT(2) /* Low Battery Level */
+#define EC_BAT_FULL		BIT(3)
 
 /* -------------------------------------------------------------------------- */
 /* Word Data Reg */
@@ -49,37 +49,36 @@
  * 0x84: ?
  */
 
-#define EC_BAT_STATUS_START		0x90
-#define EC_BAT_PERCENTAGE		0x90
-#define EC_BAT_VOLTAGE			0x92
-#define EC_BAT_CAPACITY			0x94
+#define EC_BAT_STATUS_START	0x90
+#define EC_BAT_PERCENTAGE	0x90
+#define EC_BAT_VOLTAGE		0x92
+#define EC_BAT_CAPACITY		0x94
 #define EC_BAT_FULL_CAPACITY	0x96
 /* 0x98: ? */
-#define EC_BAT_CURRENT			0x9A
+#define EC_BAT_CURRENT		0x9A
 /* 0x9C: ? */
 
-#define EC_BAT_INFO_START		0xA0
+#define EC_BAT_INFO_START	0xA0
 /* 0xA0: POWER_SUPPLY_PROP_INPUT_VOLTAGE_LIMIT? */
 #define EC_BAT_DESIGN_CAPACITY	0xA2
 #define EC_BAT_DESIGN_VOLTAGE	0xA4
 #define EC_BAT_SERIAL_NUMBER	0xA6
-#define EC_BAT_CYCLE_COUNT		0xAA
+#define EC_BAT_CYCLE_COUNT	0xAA
 
 /* -------------------------------------------------------------------------- */
 /* Battery Event ID */
 
-#define EC_EVENT_BAT_A0			0xA0
-#define EC_EVENT_BAT_A1			0xA1
-#define EC_EVENT_BAT_A2			0xA2
-#define EC_EVENT_BAT_A3			0xA3
-#define EC_EVENT_BAT_B1			0xB1
+#define EC_EVENT_BAT_A0		0xA0
+#define EC_EVENT_BAT_A1		0xA1
+#define EC_EVENT_BAT_A2		0xA2
+#define EC_EVENT_BAT_A3		0xA3
+#define EC_EVENT_BAT_B1		0xB1
 /* EVENT B1 A0 A1 repeat about every 1s 2s 3s respectively */
 
-#define MILLI_TO_MICRO			1000
-
 /* ACPI _BIX field, Min sampling time, the duration between two _BST */
-#define CACHE_TIME				15000 /* cache time in milliseconds */
+#define CACHE_TIME		15000 /* cache time in milliseconds */
 
+#define MILLI_TO_MICRO		1000
 
 struct gaokun_psy_bat_status {
 	__le16 percentage_now;	/* 0x90 */
@@ -137,8 +136,8 @@ static int gaokun_psy_get_adp_status(struct gaokun_psy *ecbat)
 }
 
 static int gaokun_psy_get_adp_property(struct power_supply *psy,
-									   enum power_supply_property psp,
-									   union power_supply_propval *val)
+				       enum power_supply_property psp,
+				       union power_supply_propval *val)
 {
 	struct gaokun_psy *ecbat = power_supply_get_drvdata(psy);
 
@@ -162,10 +161,10 @@ static enum power_supply_property gaokun_psy_adp_props[] = {
 };
 
 static const struct power_supply_desc gaokun_psy_adp_desc = {
-	.name			= "gaokun-ec-adapter",
-	.type			= POWER_SUPPLY_TYPE_USB_TYPE_C,
+	.name		= "gaokun-ec-adapter",
+	.type		= POWER_SUPPLY_TYPE_USB_TYPE_C,
 	.get_property	= gaokun_psy_get_adp_property,
-	.properties		= gaokun_psy_adp_props,
+	.properties	= gaokun_psy_adp_props,
 	.num_properties	= ARRAY_SIZE(gaokun_psy_adp_props),
 };
 
@@ -195,7 +194,7 @@ static int gaokun_psy_get_bat_info(struct gaokun_psy *ecbat)
 		return 0;
 
 	return gaokun_ec_multi_read(ecbat->ec, EC_BAT_INFO_START,
-								sizeof(ecbat->info), (u8 *)&ecbat->info);
+				    sizeof(ecbat->info), (u8 *)&ecbat->info);
 }
 
 static inline void gaokun_psy_update_bat_charge(struct gaokun_psy *ecbat)
@@ -205,8 +204,8 @@ static inline void gaokun_psy_update_bat_charge(struct gaokun_psy *ecbat)
 	gaokun_ec_read_byte(ecbat->ec, EC_BAT_STATUS, &charge);
 
 	 charge = (charge == EC_BAT_CHARGING) * POWER_SUPPLY_STATUS_CHARGING
-			+ (charge == EC_BAT_DISCHARGING) * POWER_SUPPLY_STATUS_DISCHARGING
-			+ (charge == EC_BAT_FULL) * POWER_SUPPLY_STATUS_FULL;
+		+ (charge == EC_BAT_DISCHARGING) * POWER_SUPPLY_STATUS_DISCHARGING
+		+ (charge == EC_BAT_FULL) * POWER_SUPPLY_STATUS_FULL;
 
 	ecbat->charge_now = charge;
 }
@@ -222,7 +221,7 @@ static int gaokun_psy_get_bat_status(struct gaokun_psy *ecbat)
 
 	gaokun_psy_update_bat_charge(ecbat);
 	ret = gaokun_ec_multi_read(ecbat->ec, EC_BAT_STATUS_START,
-							   sizeof(ecbat->status), (u8 *)&ecbat->status);
+				   sizeof(ecbat->status), (u8 *)&ecbat->status);
 
 	ecbat->update_time = jiffies;
 
@@ -238,22 +237,22 @@ static inline void gaokun_psy_init(struct gaokun_psy *ecbat)
 	gaokun_psy_get_bat_info(ecbat);
 
 	snprintf(ecbat->battery_serial, sizeof(ecbat->battery_serial),
-			 "%d", le16_to_cpu(ecbat->info.serial_number));
+		 "%d", le16_to_cpu(ecbat->info.serial_number));
 
 	gaokun_ec_multi_read(ecbat->ec, EC_BAT_VENDOR,
-						 sizeof(ecbat->battery_vendor) - 1,
-						 ecbat->battery_vendor);
+			     sizeof(ecbat->battery_vendor) - 1,
+			     ecbat->battery_vendor);
 
 	gaokun_ec_multi_read(ecbat->ec, EC_BAT_MODEL,
-						 sizeof(ecbat->battery_model) - 1,
-						 ecbat->battery_model);
+			     sizeof(ecbat->battery_model) - 1,
+			     ecbat->battery_model);
 
 	ecbat->battery_model[14] = 'A'; /* FIX UP */
 }
 
 static int gaokun_psy_get_bat_property(struct power_supply *psy,
-									   enum power_supply_property psp,
-									   union power_supply_propval *val)
+				       enum power_supply_property psp,
+				       union power_supply_propval *val)
 {
 	struct gaokun_psy *ecbat = power_supply_get_drvdata(psy);
 
@@ -343,15 +342,15 @@ static enum power_supply_property gaokun_psy_bat_props[] = {
 };
 
 static const struct power_supply_desc gaokun_psy_bat_desc = {
-	.name			= "gaokun-ec-battery",
-	.type			= POWER_SUPPLY_TYPE_BATTERY,
+	.name		= "gaokun-ec-battery",
+	.type		= POWER_SUPPLY_TYPE_BATTERY,
 	.get_property	= gaokun_psy_get_bat_property,
-	.properties		= gaokun_psy_bat_props,
+	.properties	= gaokun_psy_bat_props,
 	.num_properties	= ARRAY_SIZE(gaokun_psy_bat_props),
 };
 
 static int gaokun_psy_notify(struct notifier_block *nb,
-							 unsigned long action, void *data)
+			     unsigned long action, void *data)
 {
 	struct gaokun_psy *ecbat = container_of(nb, struct gaokun_psy, nb);
 
@@ -383,7 +382,7 @@ static int gaokun_psy_notify(struct notifier_block *nb,
 }
 
 static int gaokun_psy_probe(struct auxiliary_device *adev,
-							const struct auxiliary_device_id *id)
+			    const struct auxiliary_device_id *id)
 {
 	struct gaokun_ec *ec = adev->dev.platform_data;
 	struct power_supply_config psy_cfg = {};
@@ -405,16 +404,16 @@ static int gaokun_psy_probe(struct auxiliary_device *adev,
 	psy_cfg.num_supplicants = 1;
 
 	ecbat->adp_psy = devm_power_supply_register(dev, &gaokun_psy_adp_desc,
-												&psy_cfg);
+						    &psy_cfg);
 	if (IS_ERR(ecbat->adp_psy))
 		return dev_err_probe(dev, PTR_ERR(ecbat->adp_psy),
-							 "Failed to register AC power supply\n");
+				     "Failed to register AC power supply\n");
 
 	ecbat->bat_psy = devm_power_supply_register(dev, &gaokun_psy_bat_desc,
-												&psy_cfg);
+						    &psy_cfg);
 	if (IS_ERR(ecbat->bat_psy))
 		return dev_err_probe(dev, PTR_ERR(ecbat->bat_psy),
-					"Failed to register battery power supply\n");
+				     "Failed to register battery power supply\n");
 
 	gaokun_psy_init(ecbat);
 	dev_info(ecbat->dev, "EC battery init\n");
