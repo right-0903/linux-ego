@@ -19,8 +19,6 @@
 #include <linux/workqueue_types.h>
 
 #include <linux/usb/pd_vdo.h>
-#include <linux/usb/typec_dp.h>
-#include <linux/usb/typec_mux.h>
 #include <drm/bridge/aux-bridge.h>
 
 // location: driver/usb/typec/ucsi/gaokun-ucsi.c
@@ -38,15 +36,6 @@
 
 #define SC8280XP_HPD_STATE_MASK		BIT(4)
 
-#define CCX_TO_ORI(ccx) (++ccx % 3)
-
-/* Configuration Channel Extension */
-enum gaokun_ucsi_orientation {
-	USBC_ORIENTATION_NORMAL,
-	USBC_ORIENTATION_REVERSE,
-	USBC_ORIENTATION_NONE,
-};
-
 enum gaokun_ucsi_mux {
 	USBC_MUX_NONE,
 	USBC_MUX_USB_2L,
@@ -56,20 +45,11 @@ enum gaokun_ucsi_mux {
 
 struct gaokun_ucsi_port {
 	spinlock_t lock;
-
 	struct completion usb_ack;
-
 	struct work_struct altmode_work;
-
 	struct gaokun_ucsi *ucsi;
-
 	struct auxiliary_device *bridge;
-
 	int idx;
-
-	enum gaokun_ucsi_orientation orientation;
-	enum gaokun_ucsi_mux mux;
-
 	u16 svid;
 	u8 hpd_state;
 };
@@ -167,48 +147,12 @@ static int gaokun_ucsi_async_control(struct ucsi *ucsi, u64 command)
 	return gaokun_ec_ucsi_write(uec->ec, buf);
 }
 
-static void gaokun_ucsi_update_connector(struct ucsi_connector *con)
-{
-	struct gaokun_ucsi *uec = ucsi_get_drvdata(con->ucsi);
-
-	if (con->num > uec->port_num)
-		return;
-
-	con->typec_cap.orientation_aware = true;
-}
-
-static void gaokun_ucsi_connector_status(struct ucsi_connector *con)
-{
-	struct gaokun_ucsi *uec = ucsi_get_drvdata(con->ucsi);
-	struct gaokun_ucsi_port *port;
-	enum gaokun_ucsi_orientation orientation;
-	unsigned long flags;
-	int idx;
-
-	idx = con->num - 1;
-	/* con->num: 1 or 2 */
-	if (con->num > uec->port_num) {
-		dev_warn(uec->ucsi->dev, "set orientation out of range: con%d\n", idx);
-		return;
-	}
-
-	port = &uec->ports[idx];
-
-	spin_lock_irqsave(&port->lock, flags);
-	orientation = port->orientation;
-	spin_unlock_irqrestore(&port->lock, flags);
-
-	typec_set_orientation(con->port, CCX_TO_ORI(orientation));
-}
-
 const struct ucsi_operations gaokun_ucsi_ops = {
 	.read_version = gaokun_ucsi_read_version,
 	.read_cci = gaokun_ucsi_read_cci,
 	.read_message_in = gaokun_ucsi_read_message_in,
 	.sync_control = ucsi_sync_control_common,
 	.async_control = gaokun_ucsi_async_control,
-	.update_connector = gaokun_ucsi_update_connector,
-	.connector_status = gaokun_ucsi_connector_status,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -217,17 +161,17 @@ static void gaokun_ucsi_port_refresh(struct gaokun_ucsi_port *port,
 				     const u8 *buf)
 {
 	unsigned long flags;
+	u8 mux;
 	int index = (port->idx) * 2;
 
 	spin_lock_irqsave(&port->lock, flags);
-	port->orientation = buf[index] & 0x3;
-	port->mux = (buf[index] & 0xC) >> 2;
+	mux = (buf[index] & 0xC) >> 2;
 
-	if (port->mux == USBC_MUX_NONE)
+	if (mux == USBC_MUX_NONE)
 		port->svid = 0;
-	else if (port->mux == USBC_MUX_USB_2L)
+	else if (mux == USBC_MUX_USB_2L)
 		port->svid = USB_SID_PD;
-	else if (port->mux == USBC_MUX_DP_4L || port->mux == USBC_MUX_USB_DP)
+	else if (mux == USBC_MUX_DP_4L || mux == USBC_MUX_USB_DP)
 		port->svid = USB_SID_DISPLAYPORT;
 
 	port->hpd_state = FIELD_GET(SC8280XP_HPD_STATE_MASK, buf[index + 1]);
@@ -246,7 +190,7 @@ static int gaokun_ucsi_refresh(struct gaokun_ucsi *uec)
 		return -EIO;
 
 	pr_info("%s: USB event triggered, data: %*ph\n",
-			__func__, (int)sizeof(resp), resp);
+		__func__, (int)sizeof(resp), resp);
 
 	uec->port_num = resp[2];
 	updt = resp[3];
@@ -266,33 +210,10 @@ static inline int gaokun_ucsi_port_write(struct gaokun_ucsi_port *port)
 				 sizeof(resp), resp);
 }
 
-static void pmic_glink_ucsi_set_state(struct ucsi_connector *con,
-				      struct gaokun_ucsi_port *port)
-{
-	unsigned long flags;
-	int mode;
-
-	spin_lock_irqsave(&port->lock, flags);
-
-	if (port->svid == USB_SID_PD) {
-		mode = TYPEC_STATE_USB;
-		typec_set_mode(con->port, mode);
-	} else if (port->svid == USB_TYPEC_DP_SID && port->bridge) {
-		drm_aux_hpd_bridge_notify(&port->bridge->dev,
-					  port->hpd_state ?
-					  connector_status_connected :
-					  connector_status_disconnected);
-	} else {
-		dev_err(con->ucsi->dev, "Unsupported SVID 0x%04x\n", port->svid);
-	}
-
-	spin_unlock_irqrestore(&port->lock, flags);
-}
-
 static void pmic_glink_ucsi_handle_altmode(struct gaokun_ucsi_port *port)
 {
 	struct gaokun_ucsi *uec = port->ucsi;
-	struct ucsi_connector *con;
+	unsigned long flags;
 	int idx = port->idx;
 
 	if (!completion_done(&port->usb_ack))
@@ -303,15 +224,13 @@ static void pmic_glink_ucsi_handle_altmode(struct gaokun_ucsi_port *port)
 		return;
 	}
 
-	con = &uec->ucsi->connector[idx];
-	if (con) {/* Sometime, ucsi_init() failed */
-		mutex_lock(&con->lock);
-
-		gaokun_ucsi_connector_status(con);
-		pmic_glink_ucsi_set_state(con, port);
-
-		mutex_unlock(&con->lock);
-	}
+	spin_lock_irqsave(&port->lock, flags);
+	if (port->svid == USB_SID_DISPLAYPORT && port->bridge)
+		drm_aux_hpd_bridge_notify(&port->bridge->dev,
+					  port->hpd_state ?
+					  connector_status_connected :
+					  connector_status_disconnected);
+	spin_unlock_irqrestore(&port->lock, flags);
 
 	gaokun_ucsi_port_write(port);
 }
@@ -327,12 +246,24 @@ static void pmic_glink_ucsi_altmode_notify_ind(struct gaokun_ucsi *uec)
 		pmic_glink_ucsi_handle_altmode(&uec->ports[updt - 1]);
 }
 
+static void gaokun_handle_no_usb_event(struct gaokun_ucsi *uec, int idx)
+{
+	struct gaokun_ucsi_port *port;
+	if (!idx)
+		return;
+
+	port = &uec->ports[idx - 1];
+	if (!wait_for_completion_timeout(&port->usb_ack, 2 * HZ)) {
+		dev_warn(uec->dev, "No USB EVENT, enable DP manually");
+		pmic_glink_ucsi_altmode_notify_ind(uec); /* Manual if timeout */
+	}
+}
+
 static int gaokun_ucsi_notify(struct notifier_block *nb,
 			      unsigned long action, void *data)
 {
 	struct gaokun_ucsi *uec = container_of(nb, struct gaokun_ucsi, nb);
 	u32 cci;
-	int idx;
 
 	switch (action) {
 	case EC_EVENT_USB:
@@ -341,14 +272,10 @@ static int gaokun_ucsi_notify(struct notifier_block *nb,
 
 	case EC_EVENT_UCSI:
 		uec->ucsi->ops->read_cci(uec->ucsi, &cci);
+		pr_info("%s: UCSI event triggered, cci is %*ph\n",
+			__func__, 4, (u8 *)&cci);
 		ucsi_notify_common(uec->ucsi, cci);
-		pr_info_ratelimited("%s: UCSI event triggered, cci is %*ph\n", __func__, 4, (u8 *)&cci);
-
-		idx = UCSI_CCI_CONNECTOR(cci);
-		if (idx &&
-		    !wait_for_completion_timeout(&uec->ports[idx - 1].usb_ack, 2 * HZ))
-			pmic_glink_ucsi_altmode_notify_ind(uec); /* Manual if timeout */
-
+		gaokun_handle_no_usb_event(uec, UCSI_CCI_CONNECTOR(cci));
 		return NOTIFY_OK;
 
 	default:
@@ -369,14 +296,14 @@ static int gaokun_ucsi_ports_init(struct gaokun_ucsi *uec)
 	if (ret)
 		return -EIO;
 
-	uec->port_num = port_num = resp[2];
-
-	uec->ports = devm_kzalloc(dev, port_num * sizeof(*(uec->ports)), GFP_KERNEL);
+	port_num = resp[2];
+	uec->port_num = port_num;
+	uec->ports = devm_kzalloc(dev, port_num * sizeof(*(uec->ports)),
+				  GFP_KERNEL);
 	if (!uec->ports)
 		return -ENOMEM;
 
 	for (i = 0; i < port_num; ++i) {
-		uec->ports[i].orientation = USBC_ORIENTATION_NONE;
 		uec->ports[i].idx = i;
 		uec->ports[i].ucsi = uec;
 		spin_lock_init(&uec->ports[i].lock);
