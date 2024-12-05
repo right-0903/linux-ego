@@ -56,7 +56,7 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 | Touchscreen | partial | weird behavior |
 | TPM | x | |
 | USB | works | |
-| USB-PD | works | With UCSI EC driver, charging power is up to 40W compared to 20w before. In alt modes, can be used as sink and source |
+| USB-PD | works | With UCSI EC driver, charging power is up to 45W compared to 23w before. In alt modes, can be used as sink and source |
 | USB-C DisplayPort Alt Mode | works | initial support |
 | Video acceleration | unsure | depends on the main display driver status |
 | Virtualisation | x | |
@@ -126,7 +126,7 @@ Explanation, refer to Huawei support [page](https://consumer.huawei.com/en/suppo
 
 `smart_charge`: default are 4 72 40 70, correspond to charging mode, delay, start, stop, after 72 hours, charging level is limited to 70%.
 
-`smart_charge_param`: enable or not? Recently, I can't set back to 0 again, if it is 1, then charge power would be up to 23.
+`smart_charge_param`: enable or not? Recently, If it is 1, then charge power might be up to 23W.(unsure)
 
 If you set charging control on Windows, like 90%, then `smart_charge` would be `1 72 85 90`, `charge_control_thresholds` would be reset to `85 90` also.
 
