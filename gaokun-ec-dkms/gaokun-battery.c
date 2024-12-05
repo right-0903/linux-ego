@@ -76,7 +76,7 @@
 /* EVENT B1 A0 A1 repeat about every 1s 2s 3s respectively */
 
 /* ACPI _BIX field, Min sampling time, the duration between two _BST */
-#define CACHE_TIME		15000 /* cache time in milliseconds */
+#define CACHE_TIME		5000 /* cache time in milliseconds */
 
 #define MILLI_TO_MICRO		1000
 
