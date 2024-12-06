@@ -72,14 +72,14 @@ BTW, ~there are some issues(failed to register altmode, failed to reset PPM, whi
 
 ~Chances are that you keep rebooting, failed to register altmode, or some other things, until one time no error here, you may get it work.~
 
-~We will not reboot now, but we will still reboot it manually to make sure UCSI register normally. Until you don't get~(With new fixes, the UCSI driver is quiet reliable now, unlikely to meet these issues)
+~We will not reboot now, but we will still reboot it manually to make sure UCSI register normally. Until you don't get~(With new fixes, the UCSI driver is quiet reliable now, unlikely to meet these issues, if still, reboot)
 ```
 gaokun_ucsi.ucsi gaokun_ec.ucsi.0: error -ETIMEDOUT: PPM init failed
 gaokun_ucsi.ucsi gaokun_ec.ucsi.0: con1: failed to register alt modes
 ```
-(I am not sure if we can reinsert modules to fix.) Then let's plug in(make sure your orientation is not reverse), wait for seconds, if you still not get external display work, check if there are entries in your `dmesg` like `gaokun_ucsi_refresh: USB event triggered, data: 00 06 02 01 08 13 02 00 16`, if not, then try to `sudo sh -c 'echo 0 > /sys/devices/platform/gaokun-wmi/port_update'`, wait for seconds, if not, `sudo sh -c 'echo 1 > /sys/devices/platform/gaokun-wmi/port_update'`, `sudo sh -c 'echo  > /sys/devices/platform/gaokun-wmi/port_update'`. If you get `xxx data: xxx 09 xxx`, that means, your orientation is reverse.
+If there is no issue now, let's plug in(make sure your orientation(device end, unnecessary for display end) is not reverse), wait for seconds, if you still not get external display work, check if there are entries in your `dmesg` like `gaokun_ucsi_refresh: USB event triggered, data: 00 06 02 01 08 13 02 00 16`. If you get `xxx data: xxx 09 xxx`, that means, your orientation is reverse, flip it.
 
-~Remember that, replug will not fully work, if you replug, you mostly get no video signal, but if you reboot at that time, logs appear on your external display.~
+Remember that, replug will not fully work, if you replug, you mostly get a still frame, but if you reboot at that time, logs may appear on your external display.
 
 Some people have asked me for an early access to the altmode part code. Now I explain here.
 ### Todo list
