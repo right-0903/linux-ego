@@ -14,17 +14,17 @@ This project mainly refers to the following projects:
 ## Disclaimer
 I am just an amateur, a Linux noob, not educated with formal CS courses. You should never believe what I say below, except this sentence. I am not responsible for your actions; you do this all at your own risk!
 
+## Device Tree
+The DT works with steev's latest branch. You should extract the firmwares required by DT, and get them well placed, you can find them in the Windows OS `DriverStore` directory.
+
 ## Kernel
 Use steev or jhovold one with default config and `simplefb` enabled.
 
 Kernel parameter: `clk_ignore_unused pd_ignore_unused arm64.nopauth efi=noruntime`
 
-## Device Tree
-The DT works with steev's latest branch. You should extract the firmwares required by DT, and get them well placed, you can find them in the Windows OS `DriverStore` directory.
-
 ## Feature Support
 
-Refer to [this](https://github.com/jhovold/linux/wiki/X13s) as well.
+Refer to [this](https://github.com/jhovold/linux/wiki/X13s) as well. If you want to see some spoilers, check [this](./feature_spoliers/).
 
 With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write against the latest stable kernel release only.)
 
@@ -32,19 +32,20 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 | ------- | ------ | ---- |
 | Audio  | works | see [below](#audio) |
 | Backlight | x | DSI DCS-based backlight control, control method had been figured out. There is an I2C baclkight IC, power supply and how to enable keep unknown |
-| Battery | works | with my ec driver, cycle count is also supported |
+| Battery | works | some attributes are hidden, like cycle count is also supported |
 | Bluetooth | partial | paired and connected with my android phone, but keep disconnected with my LinkBuds S |
-| Camera | x | |
+| Camera | x | have no plan to support them yet |
 | CPUfreq | works | |
-| Display | x | [There](https://linaro.github.io/msm/soc/sc8280xp) is no DSI driver for SC8280XP now. I added some patches to *patch sets* folder, but still not work |
+| Display | x | [There](https://linaro.github.io/msm/soc/sc8280xp) is no DSI driver for SC8280XP now. I added some patches to [*patch sets*](./patch%20sets/WIP/DSI/) folder, but still not work |
 | Display sensors | x | for rotation detect, light detect, etc. Added slpi nodes, but how can we access it? |
-| EFI variables | works | with the [patch](./patch\ sets/fix/0001-firmware-qcom-uefisecapp-add-Huawei-Matebook-E-GO.patch). |
-| EC(WIP) | partial | Battery and adapter status, maybe modern standby |
-| Fingerprint reader | x | mbn firmwares related.(check your Windows driver repo) x13s one was introduce from [commit](https://github.com/torvalds/linux/commit/d280fe309b88b337a9b26f96b7a9d9aa6d6c3a0f). |
-| GPU | works | It works, but the dsi output not, the image is actually here, check [this](./feature_spoliers/gpu.png) |
+| EC | works | Battery and adapter status, wmi, ucsi,maybe modern standby |
+| EFI variables | works | with the [patch](./patch%20sets/fix/0001-firmware-qcom-uefisecapp-add-Huawei-Matebook-E-GO.patch). |
+| Fingerprint reader | x | mbn firmwares related which means that is complicated. x13s one was introduce from [commit](https://github.com/torvalds/linux/commit/d280fe309b88b337a9b26f96b7a9d9aa6d6c3a0f). |
+| GPU | works | Freedreno 690([FD690](./feature_spoliers/gpu.png)), remember to install `vulkan-freedreno` to enable vulkan support. |
 | Hibernation | x | |
-| Keyboard | works | |
-| Keyboard fn keys | partial | |
+| Keyboard & Touchpad | works | |
+| Keyboard fn keys | partial | brightness, volume adjustment, screen lock
+| Lid | x | basically works, revaluate it until dsi panel works |
 | NVMe SSD | works | |
 | PCIe (x4) | works | |
 | Power key | works | |
@@ -52,47 +53,35 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 | RTC | works | |
 | Suspend | works | s2idle |
 | Thermal sensors | works | partial I think |
-| Touchpad | works | |
 | Touchscreen | partial | weird behavior |
 | TPM | x | |
 | USB | works | |
-| USB-PD | works | With UCSI EC driver, charging power is up to 45W compared to 23w before. In alt modes, can be used as sink and source |
-| USB-C DisplayPort Alt Mode | works | initial support |
-| Video acceleration | unsure | depends on the main display driver status |
+| USB-PD | works | With UCSI EC driver, charging power is up to 45W compared to 23w before, can be used as sink and source |
+| USB-C DisplayPort Alt Mode | works | initial support, wait for upstream to fix Qualcomm's quirks |
+| Video acceleration | works | see [below](#Video-acceleration) |
 | Virtualisation | x | |
 | Volumn keys | works | |
 | Watchdog | partial | One in sc8280xp works, another in EC not(acpi method identifiers have not been figured out yet) |
 | Wi-Fi | works | use the 2.4 GHz band for stability. |
 | WMI related features| partial | charging control, FN lock, smart charge, thermal sensors and so on(undiscoverd things due to its meaning is unknown) |
 
+---
+
 ## Altmode
-Specific insert orientation required, support 2-lane(up to 1080P@60HZ) only for now, Johan mentioned [this](https://github.com/jhovold/linux/wiki/X13s#USB) also.
+Support DisplayPort 1.1 with 2-lane only for now, Johan mentioned [this](https://github.com/jhovold/linux/wiki/X13s#USB) also, but we don't require insert orientation(coming later, testing and debugging).
 
-BTW, ~there are some issues(failed to register altmode, failed to reset PPM, which cause a UCSI registeration failure, race conditions, data inconsistency, etc)~, after all, I havn't mastered the whole procedure yet(Reversing is like that, you can't ask for too much or perfect, lol), some of them are related to Qualcomm's quirks, ~some are my code issues~. I am working on it to minimize the potential harm to your device. So it won't be released until I finish it.
+2.7Gbps per lane, data rate is 4.32Gbps, basically, it means you can only use 1920x1080@60Hz. However, if we tweak the timings(at your risks), we can support a decent resolution with a rich timings, 24bpp with 2048(+180H.Blanking)x1280(+60V.Blanking)@60hz $\approx$ 4.30Gbps. If the bandwidth limit is exceeded, your bpp will be degraded to 18 (or lower?) to make actual bandwidth under the limit.
 
-~Chances are that you keep rebooting, failed to register altmode, or some other things, until one time no error here, you may get it work.~
+This part is not that stable, you may get a auto reset when you plug out or replug, after all, I havn't mastered the whole procedure yet(Reversing is like that, you can't ask for too much or perfect, lol), some of them are related to Qualcomm's quirks, some are my code issues. I am working on it to minimize the potential harm to your device.
 
-~We will not reboot now, but we will still reboot it manually to make sure UCSI register normally. Until you don't get~(With new fixes, the UCSI driver is quiet reliable now, unlikely to meet these issues, if still, reboot)
+If you encounter the following, reboot, it is rare, but still possible.
 ```
 gaokun_ucsi.ucsi gaokun_ec.ucsi.0: error -ETIMEDOUT: PPM init failed
 gaokun_ucsi.ucsi gaokun_ec.ucsi.0: con1: failed to register alt modes
 ```
-If there is no issue now, let's plug in(make sure your orientation(device end, unnecessary for display end) is not reverse), wait for seconds, if you still not get external display work, check if there are entries in your `dmesg` like `gaokun_ucsi_refresh: USB event triggered, data: 00 06 02 01 08 13 02 00 16`. If you get `xxx data: xxx 09 xxx`, that means, your orientation is reverse, flip it.
+If there is no issue now, let's plug in wait for seconds.
 
-Remember that, replug will not fully work, if you replug, you mostly get a still frame, but if you reboot at that time, logs may appear on your external display.
-
-Some people have asked me for an early access to the altmode part code. Now I explain here.
-### Todo list
-1. [x] ~refactor ECCD implementation to avoid data inconsistency(local repo finished, replacement work still remains)~ (New paln: try to add an abstracion layer, but the related dsdt implementation is ..., huawei you sucks)
-1. [x] refactor UCSI part code
-1. [x] add a sysfs to tweak EC
-1. [x] add the altmode part code to UCSI
-1. [ ] fix Qualcomm's quirks
-
-Remote repo is far behind local repo due to stability, and my local repo is quite different. \
-Why don't you create another branch for it? No, if I open it, I should clarif my intentions, I am tired of constant maintenance, I don't like commit every piece of modification, because I start over again when my new ideas don't work, I will most likely delete all I have written. That is time-wasting to keep track those things. Every time I work on one part only, I can maintain context in my brain, until things are settled, I will update my local repo. After some tests, I will plan to update remote repo.
-
-About ETA, I can't promise due to recent health reasons. And, as an amateur, I have my own life, my coding time is flexible.
+ *** Note: if you you plug out when there is no other video output device(logical), replug will not work. ***
 
 ![](./feature_spoliers/usbc_altmode.png)
 
@@ -167,9 +156,6 @@ BTW, you can press `Fn` key(light on) to reverse it temporarily.
 I don't know these sensors for which devices, but you can read them \
 `cat /sys/devices/platform/gaokun-wmi/temperature`
 
-## Features spoilers
-[battery](feature_spoliers/battery_features.png)
-
 ## SLPI
 SLPI(Sensor Low Power Island), [more details](https://lore.kernel.org/linux-devicetree/20230406173148.28309-1-me@dylanvanassche.be/).
 ```
@@ -177,6 +163,29 @@ SLPI(Sensor Low Power Island), [more details](https://lore.kernel.org/linux-devi
 [    2.613505] qcom,fastrpc 2400000.remoteproc:glink-edge.fastrpcglink-apps-dsp.-1.-1: no reserved DMA memory for FASTRPC
 ```
 The firmware of slpi can be loaded, you can also find `/dev/fastrpc-sdsp`, not support `IOMMU` for now. Even though, how can I access sensors?
+
+## Video acceleration
+The firmware can be loaded.
+
+The api like VA-API, VDPAU, which are most modern tools/apps supported, like firefox, vlc, obs-studio. This platform does not support them,(It supports v4l2_m2m) so there is no easy way to test it.
+
+---
+
+## Todo list
+1. [x] ~refactor ECCD implementation to avoid data inconsistency(local repo finished, replacement work still remains)~ (New paln: try to add an abstracion layer, but the related dsdt implementation is ..., huawei you sucks)
+1. [x] refactor UCSI part code
+1. [x] add a sysfs to tweak EC
+1. [x] add the altmode part code to UCSI
+1. [ ] fix Qualcomm's quirks
+
+---
+
+Some people have asked me for an early access. Now I explain here.
+
+Remote repo is far behind local repo due to stability, and my local repo is quite different. \
+Why don't you create another branch for it? No, if I open it, I should clarif my intentions, I am tired of constant maintenance, I don't like commit every piece of modification, because I start over again when my new ideas don't work, I will most likely delete all I have written. That is time-wasting to keep track those things. Every time I work on one part only, I can maintain context in my brain, until things are settled, I will update my local repo. After some tests, I will plan to update remote repo.
+
+About the ETA of any features, I promise nothing. And, as an amateur, I have my own life, my coding time is flexible.
 
 ## Progress
 Inactive(Since 10/2024), due to real life things.
