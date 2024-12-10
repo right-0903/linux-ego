@@ -81,7 +81,7 @@ gaokun_ucsi.ucsi gaokun_ec.ucsi.0: con1: failed to register alt modes
 ```
 If there is no issue now, let's plug in wait for seconds.
 
- *** Note: if you you plug out when there is no other video output device(logical), replug will not work. ***
+***Note: if you plug out when there is no other video output device(logical), replug will not work.***
 
 ![](./feature_spoliers/usbc_altmode.png)
 
@@ -125,6 +125,8 @@ If you set charging control on Windows, like 90%, then `smart_charge` would be `
 
 ## Display
 There are too many unknowns(dsi support, dual dsi with video mode dsc, gpio, power supply, backlight, etc), no actual progress can be confirmed, I have uploaded all my progress, if you have an idea, then go ahead.
+
+**Addition: Some patches are first proposed by [matalama80td3l](https://github.com/matalama80td3l) at [here](https://gitlab.freedesktop.org/drm/msm/-/issues/56). I verified and completed them.**
 
 ### KMS pipeline
 
