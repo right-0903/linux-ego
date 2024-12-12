@@ -1,8 +1,9 @@
 From 9488632b0a4e2118f7b725894651d9c6e28426c1 Mon Sep 17 00:00:00 2001
-From: nuvole <mitltlatltl@gmail.com>
+From: Tianyu Gao <gty0622@gmail.com>
 Date: Wed, 3 Jul 2024 11:18:04 +0800
 Subject: [PATCH 2/3] arm64: dts: qcom: sc8280xp: Add dsi nodes
 
+Signed-off-by: Tianyu Gao <gty0622@gmail.com>
 Signed-off-by: nuvole <mitltlatltl@gmail.com>
 ---
  arch/arm64/boot/dts/qcom/sc8280xp.dtsi | 424 ++++++++++++++++++++++++-

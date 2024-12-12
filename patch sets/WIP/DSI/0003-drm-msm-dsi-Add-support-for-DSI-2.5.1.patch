@@ -1,9 +1,9 @@
 From 94dc00e33c83abbae4380767fccc1a6930a3ddf6 Mon Sep 17 00:00:00 2001
-From: nuvole <mitltlatltl@gmail.com>
+From: Tianyu Gao <gty0622@gmail.com>
 Date: Wed, 3 Jul 2024 11:21:53 +0800
 Subject: [PATCH 3/3] drm/msm/dsi: Add support for DSI 2.5.1
 
-Signed-off-by: nuvole <mitltlatltl@gmail.com>
+Signed-off-by: Tianyu Gao <gty0622@gmail.com>
 ---
  drivers/gpu/drm/msm/dsi/dsi_cfg.c | 2 ++
  drivers/gpu/drm/msm/dsi/dsi_cfg.h | 1 +
