@@ -17,10 +17,10 @@ This project mainly refers to the following projects:
 I am just an amateur, a Linux noob, not educated with formal CS courses. You should never believe what I say below, except this sentence. I am not responsible for your actions; you do this all at your own risk!
 
 ## Device Tree
-The DT works with steev's latest branch. You should extract the firmwares required by DT, and get them well placed, you can find them in the Windows OS `DriverStore` directory.
+The DT works with steev's latest branch. You should extract the firmwares required by DT, and get them well placed, you can find them in the Windows OS `DriverStore` directory. (Update: AUR [here](https://aur.archlinux.org/packages/linux-firmware-gaokun3))
 
 ## Kernel
-Use steev or jhovold one with default config and `simplefb` enabled.
+Use steev or jhovold one with default config and `simplefb` enabled. (Update: AUR [here](https://aur.archlinux.org/pkgbase/linux-gaokun3))
 
 Kernel parameter: `clk_ignore_unused pd_ignore_unused arm64.nopauth efi=noruntime`
 
