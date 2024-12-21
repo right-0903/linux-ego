@@ -64,7 +64,7 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 | Virtualisation | x | |
 | Volumn keys | works | |
 | Watchdog | partial | One in sc8280xp works, another in EC not(acpi method identifiers have not been figured out yet) |
-| Wi-Fi | works | use the 2.4 GHz band for stability. |
+| Wi-Fi | works | |
 | WMI related features| partial | charging control, FN lock, smart charge, thermal sensors and so on(undiscoverd things due to its meaning is unknown) |
 
 ---
@@ -172,6 +172,38 @@ The firmware of slpi can be loaded, you can also find `/dev/fastrpc-sdsp`, not s
 The firmware can be loaded.
 
 The api like VA-API, VDPAU, which are most modern tools/apps supported, like firefox, vlc, obs-studio. This platform does not support them,(It supports v4l2_m2m) so there is no easy way to test it.
+
+## Wi-Fi
+Use [the script](https://github.com/qca/qca-swiss-army-knife/blob/master/tools/scripts/ath11k/ath11k-bdencoder),
+
+extract all files,
+
+```
+./ath11k-bdencoder -e board-2.bin
+```
+
+edit `board-2.json`, let us use x13s one calibration data,
+
+```
+...
+"board": [
+...
+            {
+                "names": [
+                    "bus=pci,vendor=17cb,device=1103,subsystem-vendor=17cb,subsystem-device=0108,qmi-chip-id=2,qmi-board-id=255,variant=HW_GK3"
+                ],
+                "data": "bus=pci,vendor=17cb,device=1103,subsystem-vendor=17cb,subsystem-device=0108,qmi-chip-id=2,qmi-board-id=140,variant=LE_X13S.bin"
+            },
+...
+]
+...
+```
+
+regenerate it,
+
+```
+./ath11k-bdencoder -c board-2.json
+```
 
 ---
 

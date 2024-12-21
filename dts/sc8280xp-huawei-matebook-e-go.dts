@@ -798,9 +798,7 @@
 		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
 		vddrfa1p8-supply = <&vreg_pmu_rfa_1p7>;
 
-		/* there is no calibrate data for huawei,
-			but they have the same subsystem-device id */
-		qcom,ath11k-calibration-variant = "LE_X13S";
+		qcom,ath11k-calibration-variant = "HW_GK3";
 	};
 };
 
