@@ -24,6 +24,9 @@ Use steev or jhovold one with default config and `simplefb` enabled. (Update: AU
 
 Kernel parameter: `clk_ignore_unused pd_ignore_unused arm64.nopauth efi=noruntime`
 
+## Prebuilt Bianry
+Search for `gaokun` [here](https://github.com/right-0903/my_arch_auto_pack/releases/tag/packages).
+
 ## Feature Support
 
 Refer to [this](https://github.com/jhovold/linux/wiki/X13s) as well. If you want to see some spoilers, check [this](./feature_spoliers/).
