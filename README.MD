@@ -38,7 +38,7 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 | Audio  | works | see [below](#audio) |
 | Backlight | x | DSI DCS-based backlight control, control method had been figured out. There is an I2C baclkight IC, power supply and how to enable keep unknown |
 | Battery | works | some attributes are hidden, like cycle count is also supported |
-| Bluetooth | partial | paired and connected with my android phone, but keep disconnected with my LinkBuds S |
+| Bluetooth | works | RF performance is incredible when you have set calibration data for wifi(they are both on the chip of WCN6855) |
 | Camera | x | have no plan to support them yet |
 | CPUfreq | works | |
 | Display | x | [There](https://linaro.github.io/msm/soc/sc8280xp) is no DSI driver for SC8280XP now. I added some patches to [*patch sets*](./patch%20sets/WIP/DSI/) folder, but still not work |
@@ -67,7 +67,7 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 | Virtualisation | x | |
 | Volumn keys | works | |
 | Watchdog | partial | One in sc8280xp works, another in EC not(acpi method identifiers have not been figured out yet) |
-| Wi-Fi | works | |
+| Wi-Fi | works | see [below](#Wi-Fi) |
 | WMI related features| partial | charging control, FN lock, smart charge, thermal sensors and so on(undiscoverd things due to its meaning is unknown) |
 
 ---
@@ -179,7 +179,7 @@ The api like VA-API, VDPAU, which are most modern tools/apps supported, like fir
 ## Wi-Fi
 Use [the script](https://github.com/qca/qca-swiss-army-knife/blob/master/tools/scripts/ath11k/ath11k-bdencoder),
 
-extract all files,
+extract all files from the board file, you can get it from your local directory or [here](https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/tree/ath11k/WCN6855/hw2.0),
 
 ```
 ./ath11k-bdencoder -e board-2.bin
