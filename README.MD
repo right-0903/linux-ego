@@ -25,7 +25,9 @@ Use steev or jhovold one with default config and `simplefb` enabled. (Update: AU
 Kernel parameter: `clk_ignore_unused pd_ignore_unused arm64.nopauth efi=noruntime`
 
 ## Prebuilt Bianry
-Search for `gaokun` [here](https://github.com/right-0903/my_arch_auto_pack/releases/tag/packages).
+Search for `gaokun` from another one of my repo, [here](https://github.com/right-0903/my_arch_auto_pack/releases/tag/packages).
+
+The image and a copy of packages from another repo, see [release](https://github.com/right-0903/linux-ego/releases/tag/packages).
 
 ## Feature Support
 
