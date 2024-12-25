@@ -1,0 +1,29 @@
+name: img_pack
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Once a month
+    - cron: '0 0 1 * *'
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Update
+      run: |
+        sudo ${{ github.workspace }}/utils/img_pack.sh
+
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          ${{ github.workspace }}/*img.xz
+          ${{ github.workspace }}/*pkg.tar.zst
+        tag_name: packages
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
