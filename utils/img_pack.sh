@@ -89,8 +89,12 @@ arch-chroot ${CHROOT_DIR} sh -c 'pacman -Syu efibootmgr grub linux-firmware-qcom
 
 arch-chroot ${CHROOT_DIR} sh -c 'pacman -S linux-gaokun3 linux-gaokun3-headers linux-firmware-gaokun3 --noconfirm'
 
-cp ${CHROOT_DIR}/var/cache/pacman/pkg/*.pkg.tar.zst .
-rm ${CHROOT_DIR}/var/cache/pacman/pkg/*
+# make a copy for this repo
+mv ${CHROOT_DIR}/var/cache/pacman/pkg/*.pkg.tar.zst .
+
+# use early KMS for debugging, this would give us log in the initramfs stage.
+sed -i 's/^\(MODULES=(\)/\1\nsimpledrm/' ${CHROOT_DIR}/etc/mkinitcpio-gaokun3.conf
+arch-chroot ${CHROOT_DIR} sh -c 'mkinitcpio -P'
 
 # install grub
 arch-chroot ${CHROOT_DIR} sh -c "grub-install ${LOOP_DEV}p1"
