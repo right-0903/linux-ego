@@ -73,6 +73,14 @@ AllowSuspendThenHibernate=no
 AllowHybridSleep=no
 EOF
 
+# add a grub update script(Is it really reliable at any time?)
+cat << EOF >> ${CHROOT_DIR}/usr/bin/update-grub
+#!/bin/bash
+grub-mkconfig -o /boot/grub/grub.cfg
+sed -i 's/^\(.*\)\(initrd\)\(.*\/boot\/\)\(.*img$\)/\1\2\3\4\n\1devicetree\3sc8280xp-huawei-gaokun3.dtb/' /boot/grub/grub.cfg
+EOF
+chmod 744 ${CHROOT_DIR}/usr/bin/update-grub
+
 # initialize the pacman keyring and populate the Arch Linux ARM package signing keys
 # https://archlinuxarm.org/platforms/armv8/generic
 arch-chroot ${CHROOT_DIR} sh -c 'pacman-key --init && pacman-key --populate archlinuxarm'
@@ -107,10 +115,7 @@ sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="clk_ignore_unused pd_ignore_
 sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"/GRUB_CMDLINE_LINUX_DEFAULT="fbcon=rotate:1 loglevel=3"/' ${CHROOT_DIR}/etc/default/grub
 
 # generate the grub config
-arch-chroot ${CHROOT_DIR} sh -c 'grub-mkconfig -o /boot/grub/grub.cfg'
-
-# add devicetree blob to grub config
-sed -i 's/^\(.*\)\(initrd\)\(.*\/boot\/\)\(.*img$\)/\1\2\3\4\n\1devicetree\3sc8280xp-huawei-gaokun3.dtb/' ${CHROOT_DIR}/boot/grub/grub.cfg
+arch-chroot ${CHROOT_DIR} 'update-grub'
 
 # do clean
 rm ${CHROOT_DIR}/usr/bin/qemu-aarch64-static ${CHROOT_DIR}/root/*
