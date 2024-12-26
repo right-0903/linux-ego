@@ -29,6 +29,8 @@ Search for `gaokun` from another one of my repo, [here](https://github.com/right
 
 The image and a copy of packages from another repo, see [release](https://github.com/right-0903/linux-ego/releases/tag/packages).
 
+User and password are both `alarm` and both `root`.
+
 ***Note: Recently, the main issue is that arch initcpio/initramfs does not support boot from USB.(i.e. can't get the new_root(real root) disk, look into `/init`). If you place `simpledrm` into initramfs(it is [early KMS](https://wiki.archlinux.org/title/Kernel_mode_setting#Early_KMS_start), unnecessary), then you will get `Waiting 10 seconds for device /dev/disk/by-uuid/balabala`; if you not, generally, after `new_root` were mounted, then the KMS module would be accessed from `new_root`. Here we cannot mount it, so the monitor is not responding.***
 
 So, to use it, either use other tools to generate a initramfs(like `initramfs-tools` from debian series, you can do it under WSL),
