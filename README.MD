@@ -13,6 +13,9 @@ This project mainly refers to the following projects:
 
 ***The time span is very long. If I forget someone's work, please remind me, if I recall something, I will add it.***
 
+## Upstream Progress
+Initial dt support will land on 6.14, currently, they are in qcom `-next` tree, see [here](https://git.kernel.org/pub/scm/linux/kernel/git/qcom/linux.git/log/?h=for-next&qt=grep&q=Pengyu+Luo).
+
 ## Disclaimer
 I am just an amateur, a Linux noob, not educated with formal CS courses. You should never believe what I say below, except this sentence. I am not responsible for your actions; you do this all at your own risk!
 
@@ -31,10 +34,9 @@ The image and a copy of packages from another repo, see [release](https://github
 
 User and password are both `alarm` and both `root`.
 
-***Note: Recently, the main issue is that arch initcpio/initramfs does not support boot from USB.(i.e. can't get the new_root(real root) disk, look into `/init`). If you place `simpledrm` into initramfs(it is [early KMS](https://wiki.archlinux.org/title/Kernel_mode_setting#Early_KMS_start), unnecessary), then you will get `Waiting 10 seconds for device /dev/disk/by-uuid/balabala`; if you not, generally, after `new_root` were mounted, then the KMS module would be accessed from `new_root`. Here we cannot mount it, so the monitor is not responding.***
-
-So, to use it, either use other tools to generate a initramfs(like `initramfs-tools` from debian series, you can do it under WSL),
-or make your SSD 2nd partiton ext4, then copy files to it. Of course, hacking arch `/init` to find out is an once and for all idea.
+> [!WARNING]
+> Recently, the main issue is that arch initcpio/initramfs does not support boot from USB.(i.e. can't get the new_root(real root) disk, look into `/init`). If you place `simpledrm` into initramfs(it is [early KMS](https://wiki.archlinux.org/title/Kernel_mode_setting#Early_KMS_start), unnecessary), then you will get `Waiting 10 seconds for device /dev/disk/by-uuid/balabala`; if you not, generally, after `new_root` were mounted, then the KMS module would be accessed from `new_root`. Here we cannot mount it, so the monitor is not responding.
+> So, to use it, either use other tools to generate a initramfs(like `initramfs-tools` from debian series, you can do it under WSL), (there is a initramfs modified by me distributed in a small range, at your risks,) or make your SSD 2nd partiton ext4, then copy files to it. Of course, hacking arch `/init` to find out is an once and for all idea.
 
 ## Feature Support
 
