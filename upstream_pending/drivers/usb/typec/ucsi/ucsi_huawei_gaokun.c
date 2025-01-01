@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * gaokun-ucsi - A UCSI driver for HUAWEI Matebook E Go (sc8280xp)
+ * ucsi-huawei-gaokun - A UCSI driver for HUAWEI Matebook E Go
  *
  * reference: drivers/usb/typec/ucsi/ucsi_yoga_c630.c
  *            drivers/usb/typec/ucsi/ucsi_glink.c
@@ -9,25 +9,22 @@
  * Copyright (C) 2024 Pengyu Luo <mitltlatltl@gmail.com>
  */
 
+#include <drm/bridge/aux-bridge.h>
 #include <linux/auxiliary_bus.h>
 #include <linux/bitops.h>
 #include <linux/completion.h>
 #include <linux/container_of.h>
-#include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
 #include <linux/of.h>
+#include <linux/platform_data/huawei-gaokun-ec.h>
 #include <linux/string.h>
+#include <linux/usb/pd_vdo.h>
+#include <linux/usb/typec_altmode.h>
+#include <linux/usb/typec_dp.h>
 #include <linux/workqueue_types.h>
 
-#include <linux/usb/pd_vdo.h>
-#include <drm/bridge/aux-bridge.h>
-
-#include <linux/platform_data/huawei-gaokun-ec.h>
-
 #include "ucsi.h"
-
-
 
 #define EC_EVENT_UCSI	0x21
 #define EC_EVENT_USB	0x22
@@ -39,9 +36,9 @@
 #define GAOKUN_HPD_STATE_MASK	BIT(4)
 #define GAOKUN_HPD_IRQ_MASK	BIT(5)
 
-#define CCX_TO_ORI(ccx) (++ccx % 3)
-
 #define GET_IDX(updt) (ffs(updt) - 1)
+
+#define CCX_TO_ORI(ccx) (++ccx % 3) /* convert ccx to enum typec_orientation */
 
 /* Configuration Channel Extension */
 enum gaokun_ucsi_ccx {
@@ -55,6 +52,22 @@ enum gaokun_ucsi_mux {
 	USBC_MUX_USB_2L,
 	USBC_MUX_DP_4L,
 	USBC_MUX_USB_DP,
+};
+/* based on pmic_glink_altmode_pin_assignment */
+enum gaokun_ucsi_dpam_pan {	/* DP Alt Mode Pin Assignments */
+	USBC_DPAM_PAN_NONE,
+	USBC_DPAM_PAN_A,	/* Not supported after USB Type-C Standard v1.0b */
+	USBC_DPAM_PAN_B,	/* Not supported after USB Type-C Standard v1.0b */
+	USBC_DPAM_PAN_C,	/* USBC_DPAM_PAN_C_REVERSE - 6 */
+	USBC_DPAM_PAN_D,
+	USBC_DPAM_PAN_E,
+	USBC_DPAM_PAN_F,	/* Not supported after USB Type-C Standard v1.0b */
+	USBC_DPAM_PAN_A_REVERSE,/* Not supported after USB Type-C Standard v1.0b */
+	USBC_DPAM_PAN_B_REVERSE,/* Not supported after USB Type-C Standard v1.0b */
+	USBC_DPAM_PAN_C_REVERSE,
+	USBC_DPAM_PAN_D_REVERSE,
+	USBC_DPAM_PAN_E_REVERSE,
+	USBC_DPAM_PAN_F_REVERSE,/* Not supported after USB Type-C Standard v1.0b */
 };
 
 struct gaokun_ucsi_reg {
@@ -86,7 +99,7 @@ struct gaokun_ucsi {
 	struct ucsi *ucsi;
 	struct gaokun_ucsi_port *ports;
 	struct device *dev;
-	struct work_struct work;
+	struct delayed_work work;
 	struct notifier_block nb;
 	u16 version;
 	u8 port_num;
@@ -140,7 +153,9 @@ static int gaokun_ucsi_async_control(struct ucsi *ucsi, u64 command)
 {
 	struct gaokun_ucsi *uec = ucsi_get_drvdata(ucsi);
 	u8 buf[GAOKUN_UCSI_WRITE_SIZE] = {};
+
 	memcpy(buf, &command, sizeof(command));
+
 	return gaokun_ec_ucsi_write(uec->ec, buf);
 }
 
@@ -197,9 +212,10 @@ const struct ucsi_operations gaokun_ucsi_ops = {
 static void gaokun_ucsi_port_update(struct gaokun_ucsi_port *port,
 				    const u8 *port_data)
 {
+	struct ucsi *ucsi = port->ucsi->ucsi;
+	int offset = port->idx * 2; /* every port has 2 Bytes data */
 	unsigned long flags;
 	u8 dcc, ddi;
-	int offset = port->idx * 2; /* every port has 2 Bytes data */
 
 	dcc = port_data[offset];
 	ddi = port_data[offset + 1];
@@ -212,20 +228,42 @@ static void gaokun_ucsi_port_update(struct gaokun_ucsi_port *port,
 	port->hpd_state = FIELD_GET(GAOKUN_HPD_STATE_MASK, ddi);
 	port->hpd_irq = FIELD_GET(GAOKUN_HPD_IRQ_MASK, ddi);
 
+	/* Mode and SVID are unused; keeping them to make things clearer */
+	switch (port->mode) {
+	case USBC_DPAM_PAN_C:
+	case USBC_DPAM_PAN_C_REVERSE:
+		port->mode = DP_PIN_ASSIGN_C; /* correct it for usb later */
+		break;
+	case USBC_DPAM_PAN_D:
+	case USBC_DPAM_PAN_D_REVERSE:
+		port->mode = DP_PIN_ASSIGN_D;
+		break;
+	case USBC_DPAM_PAN_E:
+	case USBC_DPAM_PAN_E_REVERSE:
+		port->mode = DP_PIN_ASSIGN_E;
+		break;
+	case USBC_DPAM_PAN_NONE:
+		port->mode = TYPEC_STATE_SAFE;
+		break;
+	default:
+		dev_warn(ucsi->dev, "unknow mode %d\n", port->mode);
+		break;
+	}
+
 	switch (port->mux) {
 	case USBC_MUX_NONE:
 		port->svid = 0;
 		break;
 	case USBC_MUX_USB_2L:
 		port->svid = USB_SID_PD;
+		port->mode = TYPEC_STATE_USB; /* same as PAN_C, correct it */
 		break;
 	case USBC_MUX_DP_4L:
 	case USBC_MUX_USB_DP:
 		port->svid = USB_SID_DISPLAYPORT;
-		if (port->ccx == USBC_CCX_REVERSE)
-			port->mode -= 6;
 		break;
 	default:
+		dev_warn(ucsi->dev, "unknow mux state %d\n", port->mux);
 		break;
 	}
 
@@ -239,14 +277,15 @@ static int gaokun_ucsi_refresh(struct gaokun_ucsi *uec)
 
 	ret = gaokun_ec_ucsi_get_reg(uec->ec, (u8 *)&ureg);
 	if (ret)
-		return -EIO;
+		return GAOKUN_UCSI_NO_PORT_UPDATE;
 
 	uec->port_num = ureg.port_num;
 	idx = GET_IDX(ureg.port_updt);
 
-	if (idx >= 0 && idx < ureg.port_num)
-		gaokun_ucsi_port_update(&uec->ports[idx], ureg.port_data);
+	if (idx < 0 || idx >= ureg.port_num)
+		return GAOKUN_UCSI_NO_PORT_UPDATE;
 
+	gaokun_ucsi_port_update(&uec->ports[idx], ureg.port_data);
 	return idx;
 }
 
@@ -275,19 +314,24 @@ static void gaokun_ucsi_altmode_notify_ind(struct gaokun_ucsi *uec)
 	int idx;
 
 	idx = gaokun_ucsi_refresh(uec);
-	if (idx < 0)
-		gaokun_ec_ucsi_pan_ack(uec->ec, idx);
+	if (idx == GAOKUN_UCSI_NO_PORT_UPDATE)
+		gaokun_ec_ucsi_pan_ack(uec->ec, idx); /* ack directly if no update */
 	else
 		gaokun_ucsi_handle_altmode(&uec->ports[idx]);
 }
 
+/*
+ * USB event is necessary for enabling altmode, the event should follow
+ * UCSI event, if not after timeout(this notify may be disabled somehow),
+ * then force to enable altmode.
+ */
 static void gaokun_ucsi_handle_no_usb_event(struct gaokun_ucsi *uec, int idx)
 {
 	struct gaokun_ucsi_port *port;
 
 	port = &uec->ports[idx];
 	if (!wait_for_completion_timeout(&port->usb_ack, 2 * HZ)) {
-		dev_warn(uec->dev, "No USB EVENT, enable by UCSI EVENT");
+		dev_warn(uec->dev, "No USB EVENT, triggered by UCSI EVENT");
 		gaokun_ucsi_altmode_notify_ind(uec);
 	}
 }
@@ -316,14 +360,14 @@ static int gaokun_ucsi_notify(struct notifier_block *nb,
 	}
 }
 
-static inline int gaokun_ucsi_get_port_num(struct gaokun_ucsi *uec)
+static int gaokun_ucsi_get_port_num(struct gaokun_ucsi *uec)
 {
 	struct gaokun_ucsi_reg ureg;
 	int ret;
 
 	ret = gaokun_ec_ucsi_get_reg(uec->ec, (u8 *)&ureg);
 
-	return ret ? 0: ureg.port_num;
+	return ret ? 0 : ureg.port_num;
 }
 
 static int gaokun_ucsi_ports_init(struct gaokun_ucsi *uec)
@@ -379,7 +423,7 @@ static int gaokun_ucsi_ports_init(struct gaokun_ucsi *uec)
 		ret = devm_drm_dp_hpd_bridge_add(dev, uec->ports[i].bridge);
 		if (ret)
 			return ret;
- 	}
+	}
 
 	return 0;
 }
@@ -390,25 +434,26 @@ static void gaokun_ucsi_register_worker(struct work_struct *work)
 	struct ucsi *ucsi;
 	int ret;
 
-	uec = container_of(work, struct gaokun_ucsi, work);
+	uec = container_of(work, struct gaokun_ucsi, work.work);
 	ucsi = uec->ucsi;
-
+	/* This may be a problem specific to sc8280xp-based machines */
 	ucsi->quirks = UCSI_NO_PARTNER_PDOS | UCSI_DELAY_DEVICE_PDOS;
 
-	ssleep(5); /* EC can't handle UCSI properly in the early stage */
-
 	ret = gaokun_ec_register_notify(uec->ec, &uec->nb);
-	if (ret)
+	if (ret) {
+		dev_err_probe(ucsi->dev, ret, "notifier register failed\n");
 		return;
+	}
 
 	ret = ucsi_register(ucsi);
 	if (ret)
-		return;
+		dev_err_probe(ucsi->dev, ret, "ucsi register failed\n");
 }
 
 static inline int gaokun_ucsi_register(struct gaokun_ucsi *uec)
 {
-	schedule_work(&uec->work);
+	/* EC can't handle UCSI properly in the early stage */
+	schedule_delayed_work(&uec->work, 3 * HZ);
 
 	return 0;
 }
@@ -430,7 +475,7 @@ static int gaokun_ucsi_probe(struct auxiliary_device *adev,
 	uec->version = 0x0100;
 	uec->nb.notifier_call = gaokun_ucsi_notify;
 
-	INIT_WORK(&uec->work, gaokun_ucsi_register_worker);
+	INIT_DELAYED_WORK(&uec->work, gaokun_ucsi_register_worker);
 
 	ret = gaokun_ucsi_ports_init(uec);
 	if (ret)

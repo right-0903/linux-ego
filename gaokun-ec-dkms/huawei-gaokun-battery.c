@@ -16,9 +16,11 @@
 #include <linux/jiffies.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
-#include <linux/platform_data/huawei-gaokun-ec.h>
+// #include <linux/platform_data/huawei-gaokun-ec.h>
 #include <linux/power_supply.h>
 #include <linux/sprintf.h>
+
+#include "huawei-gaokun-ec.h"
 
 /* -------------------------------------------------------------------------- */
 /* String Data Reg */
@@ -549,7 +551,7 @@ static int gaokun_psy_probe(struct auxiliary_device *adev,
 
 	psy_cfg.supplied_to = (char **)&gaokun_psy_bat_desc.name;
 	psy_cfg.num_supplicants = 1;
-	// psy_cfg.no_wakeup_source = true;
+	psy_cfg.no_wakeup_source = true;
 	psy_cfg.attr_grp = gaokun_psy_features_groups;
 	ecbat->bat_psy = devm_power_supply_register(dev, &gaokun_psy_bat_desc,
 						    &psy_cfg);

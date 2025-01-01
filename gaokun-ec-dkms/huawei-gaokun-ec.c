@@ -19,8 +19,10 @@
 #include <linux/notifier.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
-#include <linux/platform_data/huawei-gaokun-ec.h>
+// #include <linux/platform_data/huawei-gaokun-ec.h>
 #include <linux/version.h>
+
+#include "huawei-gaokun-ec.h"
 
 #define EC_EVENT		0x06
 
