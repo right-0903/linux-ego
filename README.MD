@@ -3,10 +3,10 @@
 This repository contains workarounds for the Huawei Matebook E Go (8cx Gen 3) to support Linux.
 
 This project mainly refers to the following projects:
-* [jhovold](https://github.com/jhovold/linux): who adds patches to the mainline to support X13s and SC8280XP (8cx Gen 3).
+* [jhovold](https://github.com/jhovold/linux): who contributes to the mainline to support X13s and SC8280XP (8cx Gen 3).
 * [steev](https://github.com/steev/linux): who maintains the kernel for X13s.
-* [linaro team](https://patchwork.kernel.org/project/linux-pm/cover/20240614-yoga-ec-driver-v7-0-9f0b9b40ae76@linaro.org/): who authored the Lenovo c630 EC driver, and showed an example how to write auxiliary device modules.
-* [Nikita Travkin](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/platform/arm64/acer-aspire1-ec.c): who authored the very first Acer aspire1(sc7180) i2c EC driver.
+* [linaro team](https://patchwork.kernel.org/project/linux-pm/cover/20240614-yoga-ec-driver-v7-0-9f0b9b40ae76@linaro.org/): who authored the Lenovo c630 EC driver(first proposed), and showed an example how to write auxiliary device modules.
+* [Nikita Travkin](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/drivers/platform/arm64/acer-aspire1-ec.c): who authored the very first(first upstreamed) Acer aspire1(sc7180) i2c EC driver.
 * [aymanbagabas](https://github.com/aymanbagabas/Huawei-WMI): who authored Huawei laptop wmi driver and showed the meaning of ACPI identifiers like GBTT, SBTT, etc
 * [NewWheat](https://gitlab.com/New-Wheat/linux-for-huawei-matebook-e-2019): who helped me find EC interrupt, and offered one copy of i2c EC driver for reference.
 * [chenxuecong2](https://github.com/chenxuecong2/linux-huawei-matebook-e-go) & [matalama80td3l](https://github.com/matalama80td3l/matebook-e-go-boot-works): who migrated the initial device tree from X13s' and added a framebuffer for the Huawei Matebook E Go.
@@ -84,7 +84,7 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 ---
 
 ## Altmode
-Support DisplayPort 1.1 with 2-lane only for now, Johan mentioned [this](https://github.com/jhovold/linux/wiki/X13s#USB) also, but we don't require insert orientation(coming later, testing and debugging).
+Support DisplayPort 1.1 with 2-lane only for now, Johan mentioned [this](https://github.com/jhovold/linux/wiki/X13s#USB) also, but we don't require insert orientation.
 
 2.7Gbps per lane, data rate is 4.32Gbps, basically, it means you can only use 1920x1080@60Hz. However, if we tweak the timings(at your risks), we can support a decent resolution with a rich timings, 24bpp with 2048(+180H.Blanking)x1280(+60V.Blanking)@60hz $\approx$ 4.30Gbps. If the bandwidth limit is exceeded, your bpp will be degraded to 18 (or lower?) to make actual bandwidth under the limit.
 
@@ -236,9 +236,6 @@ Remote repo is far behind local repo due to stability, and my local repo is quit
 Why don't you create another branch for it? No, if I open it, I should clarif my intentions, I am tired of constant maintenance, I don't like commit every piece of modification, because I start over again when my new ideas don't work, I will most likely delete all I have written. That is time-wasting to keep track those things. Every time I work on one part only, I can maintain context in my brain, until things are settled, I will update my local repo. After some tests, I will plan to update remote repo.
 
 About the ETA of any features, I promise nothing. And, as an amateur, I have my own life, my coding time is flexible.
-
-## Progress
-Inactive(Since 10/2024), due to real life things.
 
 ## Help wanted
 I am occupied with real life things, I spend much free time on it, if someone can help me test features, that will be awesome. Also, as I am an amateur, I am happy to receive suggestions from coding, ACPI/DSDT/SSDT reversing, working mechanism of DSI panel, etc.
