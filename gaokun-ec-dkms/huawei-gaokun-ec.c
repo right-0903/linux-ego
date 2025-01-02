@@ -765,6 +765,12 @@ static int gaokun_ec_probe(struct i2c_client *client)
 	return 0;
 }
 
+static void gaokun_ec_remove(struct i2c_client *client)
+{
+	struct gaokun_ec *ec = i2c_get_clientdata(client);
+	hwmon_device_unregister(ec->hwmon_dev);
+}
+
 static const struct i2c_device_id gaokun_ec_id[] = {
 	{ "gaokun-ec", },
 	{ }
@@ -789,6 +795,7 @@ static struct i2c_driver gaokun_ec_driver = {
 		.dev_groups = gaokun_ec_groups,
 	},
 	.probe = gaokun_ec_probe,
+	.remove = gaokun_ec_remove,
 	.id_table = gaokun_ec_id,
 };
 module_i2c_driver(gaokun_ec_driver);
