@@ -47,6 +47,8 @@ mount ${LOOP_DEV}p1 ${CHROOT_DIR}/boot/efi
 
 genfstab -U ${CHROOT_DIR} >> ${CHROOT_DIR}/etc/fstab
 
+# github action runner has a swap, we don't need it.
+sed -i '/^.*swap.*$/d' ${CHROOT_DIR}/etc/fstab
 
 # many tutorials sugget this
 cp /usr/bin/qemu-aarch64-static  ${CHROOT_DIR}/usr/bin/qemu-aarch64-static
@@ -101,7 +103,7 @@ arch-chroot ${CHROOT_DIR} sh -c 'pacman -S linux-gaokun3 linux-gaokun3-headers l
 mv ${CHROOT_DIR}/var/cache/pacman/pkg/*.pkg.tar.zst .
 
 # use early KMS for debugging, this would give us log in the initramfs stage.
-sed -i 's/^\(MODULES=(\)/\1\nsimpledrm/' ${CHROOT_DIR}/etc/mkinitcpio-gaokun3.conf
+sed -i 's/^\(MODULES=(\)/\1\nsimpledrm\nphy-qcom-snps-femto-v2/' ${CHROOT_DIR}/etc/mkinitcpio-gaokun3.conf
 arch-chroot ${CHROOT_DIR} sh -c 'mkinitcpio -P'
 
 # install grub
