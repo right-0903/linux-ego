@@ -25,3 +25,9 @@ dkmsinstall:
 dkmsremove:
 	dkms remove -m $(MODNAME) -v $(MODVER) --all
 	rm -rf /usr/src/$(MODNAME)-$(MODVER)
+
+dkms-headers:
+	sed -i 's#<linux/platform_data/huawei-gaokun-ec\.h>#"huawei-gaokun-ec\.h"#' ./*huawei*.c
+
+kernel-headers:
+	sed -i 's#"huawei-gaokun-ec\.h"#<linux/platform_data/huawei-gaokun-ec\.h>#' ./*huawei*.c
