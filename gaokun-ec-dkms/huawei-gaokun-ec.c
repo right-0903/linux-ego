@@ -499,7 +499,7 @@ static ssize_t ec_tz_temp_label(struct device *dev,
 {
 	int idx = (to_sensor_dev_attr(attr))->index - 1;
 
-	return sprintf(buf, "EC Thermal Zone %2d Temperature\n", idx);
+	return sysfs_emit(buf, "EC Thermal Zone %2d Temperature\n", idx);
 }
 
 static SENSOR_DEVICE_ATTR(temp1_input, 0444, get_ec_tz_temp, NULL, 1);
