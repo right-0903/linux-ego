@@ -2,6 +2,11 @@
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022, Linaro Limited
+ *
+ * Copyright (c) 2024, Tianyu Gao <gty0622@gmail.com>
+ * Copyright (c) 2024, Xuecong Chen <chenxuecong2009@outlook.com>
+ *
+ * Copyright (c) 2024, Pengyu Luo <mitltlatltl@gmail.com>
  */
 
 /dts-v1/;
@@ -15,23 +20,19 @@
 
 #include "sc8280xp.dtsi"
 #include "sc8280xp-pmics.dtsi"
-#include "sc8280xp-huawei-matebook-e-go-camera.dtsi"
 
 / {
 	chassis-type = "tablet";
 	model = "Matebook E Go";
-	compatible = "huawei,matebook-e-go", "qcom,sc8280xp";
-	
+	compatible = "huawei,gaokun3", "qcom,sc8280xp";
+
 	aliases {
 		i2c4 = &i2c4;
 		i2c15 = &i2c15;
-		serial0 = &uart17;
 		serial1 = &uart2;
 	};
 
 	chosen {
-//		stdout-path = "serial0:115200n8";
-
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
@@ -43,16 +44,14 @@
 			height = <2560>;
 			stride = <(1600 * 4)>;
 			format = "a8r8g8b8";
-			clocks = <&gcc GCC_DISP_HF_AXI_CLK>,
-					<&gcc GCC_DISP_SF_AXI_CLK>;
 		};
 	};
 
 	wcd938x: audio-codec {
 		compatible = "qcom,wcd9380-codec";
 
-		pinctrl-names = "default";
 		pinctrl-0 = <&wcd_default>;
+		pinctrl-names = "default";
 
 		reset-gpios = <&tlmm 106 GPIO_ACTIVE_LOW>;
 
@@ -77,16 +76,9 @@
 	gpio-keys {
 		compatible = "gpio-keys";
 
-		pinctrl-names = "default";
 		pinctrl-0 = <&mode_pin_active>, <&vol_up_n>;
-/*
-		switch-mode {
-			gpios = <&tlmm 26 IRQ_TYPE_EDGE_BOTH>;
-			linux,input-type = <EV_SW>;
-			linux,code = <SW_TABLET_MODE>;
-			wakeup-source;
-		};
-*/
+		pinctrl-names = "default";
+
 		key-vol-up {
 			label = "Volume Up";
 			gpios = <&pmc8280_1_gpios 6 GPIO_ACTIVE_LOW>;
@@ -96,6 +88,14 @@
 			wakeup-source;
 		};
 
+		switch-mode {
+			label = "Tablet Mode Switch";
+			gpios = <&tlmm 26 GPIO_ACTIVE_HIGH>;
+			linux,input-type = <EV_SW>;
+			linux,code = <SW_TABLET_MODE>;
+			debounce-interval = <10>;
+			wakeup-source;
+		};
 	};
 
 	vreg_misc_3p3: regulator-misc-3p3 {
@@ -108,8 +108,8 @@
 		gpio = <&pmc8280_1_gpios 1 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-names = "default";
 		pinctrl-0 = <&misc_3p3_reg_en>;
+		pinctrl-names = "default";
 
 		regulator-boot-on;
 		regulator-always-on;
@@ -125,8 +125,8 @@
 		gpio = <&tlmm 135 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-names = "default";
 		pinctrl-0 = <&nvme_reg_en>;
+		pinctrl-names = "default";
 
 		regulator-boot-on;
 	};
@@ -151,8 +151,8 @@
 		gpio = <&pmr735a_gpios 1 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-names = "default";
 		pinctrl-0 = <&hastings_reg_en>;
+		pinctrl-names = "default";
 
 		regulator-boot-on;
 	};
@@ -217,11 +217,45 @@
 		};
 	};
 
+	usb0-sbu-mux {
+			compatible = "pericom,pi3usb102", "gpio-sbu-mux";
+
+			select-gpios = <&tlmm 164 GPIO_ACTIVE_HIGH>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&usb0_sbu_default>;
+
+			orientation-switch;
+
+			port {
+				usb0_sbu_mux: endpoint {
+					remote-endpoint = <&ucsi0_sbu>;
+				};
+			};
+	};
+
+	usb1-sbu-mux {
+			compatible = "pericom,pi3usb102", "gpio-sbu-mux";
+
+			select-gpios = <&tlmm 47 GPIO_ACTIVE_HIGH>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&usb1_sbu_default>;
+
+			orientation-switch;
+
+			port {
+				usb1_sbu_mux: endpoint {
+					remote-endpoint = <&ucsi1_sbu>;
+				};
+			};
+	};
+
 	wcn6855-pmu {
 		compatible = "qcom,wcn6855-pmu";
 
-		pinctrl-0 = <&bt_default>, <&wlan_en>;
 		pinctrl-names = "default";
+		pinctrl-0 = <&bt_default>, <&wlan_en>;
 
 		wlan-enable-gpios = <&tlmm 134 GPIO_ACTIVE_HIGH>;
 		bt-enable-gpios = <&tlmm 133 GPIO_ACTIVE_HIGH>;
@@ -282,14 +316,6 @@
 	};
 };
 
-/*
-&uart17 {
-    compatible = "qcom,geni-debug-uart";
-
-    status = "okay";
-};
-*/
-
 &apps_rsc {
 	regulators-0 {
 		compatible = "qcom,pm8350-rpmh-regulators";
@@ -311,8 +337,8 @@
 
 		vreg_s11b: smps11 {
 			regulator-name = "vreg_s11b";
-			regulator-min-microvolt = <1200000>;
-			regulator-max-microvolt = <1350000>;
+			regulator-min-microvolt = <1272000>;
+			regulator-max-microvolt = <1272000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
@@ -330,12 +356,12 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l2b: ldo2 {
 			regulator-name = "vreg_l2b";
-			regulator-min-microvolt = <1904000>; /* 1800000 */
+			regulator-min-microvolt = <1904000>;
 			regulator-max-microvolt = <1904000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
@@ -348,7 +374,7 @@
 			regulator-boot-on;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l4b: ldo4 {
@@ -358,10 +384,9 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		/* l5b */
 		vreg_l5b: ldo5 {
 			regulator-name = "vreg_l5b";
 			regulator-min-microvolt = <1200000>;
@@ -377,17 +402,17 @@
 			regulator-boot-on;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		vreg_l7b: ldo7 { // huawei only
+		vreg_l7b: ldo7 {
 			regulator-name = "vreg_l7b";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-boot-on;
 		};
-		/* l9b */
+
 		vreg_l9b: ldo9 {
 			regulator-name = "vreg_l9b";
 			regulator-min-microvolt = <912000>;
@@ -409,13 +434,11 @@
 
 		vreg_s1c: smps1 {
 			regulator-name = "vreg_s1c";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <2024000>;
+			regulator-min-microvolt = <1880000>;
+			regulator-max-microvolt = <1900000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
 		};
-
-		/* s2c, s3c */
 
 		vreg_l1c: ldo1 {
 			regulator-name = "vreg_l1c";
@@ -424,10 +447,9 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		/* l2c, l3c,... s13c */
 		vreg_l2c: ldo2 {
 			regulator-name = "vreg_l2c";
 			regulator-min-microvolt = <1800000>;
@@ -442,7 +464,7 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l12c: ldo12 {
@@ -459,7 +481,7 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_bob: bob {
@@ -481,8 +503,6 @@
 		vdd-l6-l9-l10-supply = <&vreg_s12b>;
 		vdd-l8-supply = <&vreg_s12b>;
 
-		/* s10d, s11d, s12d */
-
 		vreg_l2d: ldo2 {
 			regulator-name = "vreg_l2d";
 			regulator-min-microvolt = <3072000>;
@@ -490,7 +510,7 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l3d: ldo3 {
@@ -507,7 +527,7 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l6d: ldo6 {
@@ -517,7 +537,7 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l7d: ldo7 {
@@ -527,7 +547,7 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l8d: ldo8 {
@@ -537,7 +557,7 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l9d: ldo9 {
@@ -547,7 +567,7 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l10d: ldo10 {
@@ -557,13 +577,9 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-allow-set-load;
 			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-									RPMH_REGULATOR_MODE_HPM>;
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 	};
-
-	/* pmr735a
-	 * "PPP_RESOURCE_ID_SMPS3_E" / s3e
-	 */
 };
 
 &dispcc0 {
@@ -579,79 +595,103 @@
 	};
 };
 
-&mdss0_dsi0 {
+&i2c4 {
+	clock-frequency = <400000>;
+
+	pinctrl-0 = <&i2c4_default>;
+	pinctrl-names = "default";
 
 	status = "okay";
-	vdda-supply = <&vreg_l3b>;
 
-	qcom,dual-dsi-mode;
-	qcom,master-dsi;
-	qcom,sync-dual-dsi;
+	touchscreen@4f {
+		compatible = "hid-over-i2c";
+		reg = <0x4f>;
 
-	panel@0 {
-		compatible = "himax,hx83121a";
-		reg = <0>;
+		hid-descr-addr = <0x1>;
+		interrupts-extended = <&tlmm 175 IRQ_TYPE_LEVEL_LOW>;
 
-		reset-gpios = <&tlmm 38 GPIO_ACTIVE_LOW>;
-		tp-gpios = <&tlmm 99 (GPIO_ACTIVE_LOW | GPIO_OPEN_DRAIN)>; // TP_RESX (touch panel), follow RESX
+		vdd-supply = <&vreg_misc_3p3>;
+		vddl-supply = <&vreg_s10b>;
 
-		pinctrl-0 = <&disp_reset_n>;
+		pinctrl-0 = <&ts0_default>;
 		pinctrl-names = "default";
+	};
 
-		vddio-supply = <&vreg_l2b>;
-//		rotation = <90>;
+};
 
-		ports {
-			#address-cells = <1>;
-			#size-cells = <0>;
+&i2c15 {
+	clock-frequency = <400000>;
 
-			port@0 {
-				reg = <0>;
-				panel_in_0: endpoint {
-					remote-endpoint = <&mdss0_dsi0_out>;
+	pinctrl-0 = <&i2c15_default>;
+	pinctrl-names = "default";
+
+	status = "okay";
+
+	embedded-controller@38 {
+		compatible = "huawei,gaokun3-ec";
+		reg = <0x38>;
+
+		interrupts-extended = <&tlmm 107 IRQ_TYPE_LEVEL_LOW>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		connector@0 {
+			compatible = "usb-c-connector";
+			reg = <0>;
+			power-role = "dual";
+			data-role = "dual";
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					ucsi0_ss_in: endpoint {
+						remote-endpoint = <&usb_0_qmpphy_out>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					ucsi0_sbu: endpoint {
+						remote-endpoint = <&usb0_sbu_mux>;
+					};
 				};
 			};
+		};
 
-			port@1 {
-				reg = <1>;
-				panel_in_1: endpoint {
-					remote-endpoint = <&mdss0_dsi1_out>;
+		connector@1 {
+			compatible = "usb-c-connector";
+			reg = <1>;
+			power-role = "dual";
+			data-role = "dual";
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+
+					ucsi1_ss_in: endpoint {
+						remote-endpoint = <&usb_1_qmpphy_out>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+
+					ucsi1_sbu: endpoint {
+						remote-endpoint = <&usb1_sbu_mux>;
+					};
 				};
 			};
-
 		};
 	};
-};
-
-&mdss0_dsi0_out {
-	data-lanes = <0 1 2 3>;
-	remote-endpoint = <&panel_in_0>;
-};
-
-&mdss0_dsi0_phy {
-	status = "okay";
-	vdds-supply = <&vreg_l6b>;
-};
-
-&mdss0_dsi1 {
-	status = "okay";
-	vdda-supply = <&vreg_l3b>;
-
-	qcom,dual-dsi-mode;
-	qcom,sync-dual-dsi;
-
-	/* DSI1 is slave, so use DSI0 clocks */
-	// assigned-clock-parents = <&mdss0_dsi0_phy 0>, <&mdss0_dsi0_phy 1>;
-};
-
-&mdss0_dsi1_out {
-	data-lanes = <0 1 2 3>;
-	remote-endpoint = <&panel_in_1>;
-};
-
-&mdss0_dsi1_phy {
-	status = "okay";
-	vdds-supply = <&vreg_l6b>;
 };
 
 &mdss0 {
@@ -676,88 +716,14 @@
 	remote-endpoint = <&usb_1_qmpphy_dp_in>;
 };
 
-&i2c4 {
-	clock-frequency = <400000>;
-
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c4_default>;
-
-	status = "okay";
-
-	touchscreen@4f {
-		compatible = "hid-over-i2c";
-		reg = <0x4f>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 175 IRQ_TYPE_LEVEL_LOW>;
-		// reset-gpios = <&tlmm 99 GPIO_ACTIVE_LOW>;
-		// post-reset-deassert-delay-ms = <5>;
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_s10b>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&ts0_default>;
-
-	};
-};
-
-&i2c15 {
-	clock-frequency = <400000>;
-
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c15_default>;
-
-	status = "okay";
-
-	embedded-controller@38 {
-		compatible = "huawei,gaokun-ec";
-		reg = <0x38>;
-
-		interrupts-extended = <&tlmm 107 IRQ_TYPE_LEVEL_LOW>;
-
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		connector@0 {
-			compatible = "usb-c-connector";
-			reg = <0>;
-			power-role = "dual";
-			data-role = "dual";
-
-			port {
-				ucsi0_ss_in: endpoint { // superspeed, usb3.0
-					remote-endpoint = <&usb_0_qmpphy_out>;
-				};
-			};
-		};
-
-		connector@1 {
-			compatible = "usb-c-connector";
-			reg = <1>;
-			power-role = "dual";
-			data-role = "dual";
-
-			port {
-				ucsi1_ss_in: endpoint {
-					remote-endpoint = <&usb_1_qmpphy_out>;
-				};
-			};
-
-		};
-
-	};
-
-};
-
 &pcie2a {
 	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
 
 	vddpe-3v3-supply = <&vreg_nvme>;
 
-	pinctrl-names = "default";
 	pinctrl-0 = <&pcie2a_default>;
+	pinctrl-names = "default";
 
 	status = "okay";
 };
@@ -777,8 +743,8 @@
 
 	vddpe-3v3-supply = <&vreg_wlan>;
 
-	pinctrl-names = "default";
 	pinctrl-0 = <&pcie4_default>;
+	pinctrl-names = "default";
 
 	status = "okay";
 };
@@ -977,11 +943,6 @@
 	status = "okay";
 };
 
-&remoteproc_slpi {
-	firmware-name = "qcom/sc8280xp/HUAWEI/gaokun3/qcslpi8280.mbn";
-	status = "okay";
-};
-
 &remoteproc_nsp0 {
 	firmware-name = "qcom/sc8280xp/HUAWEI/gaokun3/qccdsp8280.mbn";
 
@@ -995,22 +956,22 @@
 &sound {
 	compatible = "qcom,sc8280xp-sndcard";
 	model = "SC8280XP-HUAWEI-MATEBOOKEGO";
-	audio-routing =
-		"SpkrLeft IN", "WSA_SPK1 OUT",
-		"SpkrRight IN", "WSA_SPK2 OUT",
-		"IN1_HPHL", "HPHL_OUT",
-		"IN2_HPHR", "HPHR_OUT",
-		"AMIC2", "MIC BIAS2",
-		"VA DMIC0", "MIC BIAS1",
-		"VA DMIC1", "MIC BIAS1",
-		"VA DMIC2", "MIC BIAS3",
-		"VA DMIC0", "VA MIC BIAS1",
-		"VA DMIC1", "VA MIC BIAS1",
-		"VA DMIC2", "VA MIC BIAS3",
-		"TX SWR_ADC1", "ADC2_OUTPUT";
+	audio-routing = "SpkrLeft IN", "WSA_SPK1 OUT",
+			"SpkrRight IN", "WSA_SPK2 OUT",
+			"IN1_HPHL", "HPHL_OUT",
+			"IN2_HPHR", "HPHR_OUT",
+			"AMIC2", "MIC BIAS2",
+			"VA DMIC0", "MIC BIAS1",
+			"VA DMIC1", "MIC BIAS1",
+			"VA DMIC2", "MIC BIAS3",
+			"VA DMIC0", "VA MIC BIAS1",
+			"VA DMIC1", "VA MIC BIAS1",
+			"VA DMIC2", "VA MIC BIAS3",
+			"TX SWR_ADC1", "ADC2_OUTPUT";
 
 	wcd-playback-dai-link {
 		link-name = "WCD Playback";
+
 		cpu {
 			sound-dai = <&q6apmbedai RX_CODEC_DMA_RX_0>;
 		};
@@ -1026,6 +987,7 @@
 
 	wcd-capture-dai-link {
 		link-name = "WCD Capture";
+
 		cpu {
 			sound-dai = <&q6apmbedai TX_CODEC_DMA_TX_3>;
 		};
@@ -1041,6 +1003,7 @@
 
 	wsa-dai-link {
 		link-name = "WSA Playback";
+
 		cpu {
 			sound-dai = <&q6apmbedai WSA_CODEC_DMA_RX_0>;
 		};
@@ -1056,6 +1019,7 @@
 
 	va-dai-link {
 		link-name = "VA Capture";
+
 		cpu {
 			sound-dai = <&q6apmbedai VA_CODEC_DMA_TX_0>;
 		};
@@ -1076,8 +1040,8 @@
 	left_spkr: wsa8830-left@0,1 {
 		compatible = "sdw10217020200";
 		reg = <0 1>;
-		pinctrl-names = "default";
 		pinctrl-0 = <&spkr_1_sd_n_default>;
+		pinctrl-names = "default";
 		powerdown-gpios = <&tlmm 178 GPIO_ACTIVE_LOW>;
 		#thermal-sensor-cells = <0>;
 		sound-name-prefix = "SpkrLeft";
@@ -1088,8 +1052,8 @@
 	right_spkr: wsa8830-right@0,2 {
 		compatible = "sdw10217020200";
 		reg = <0 2>;
-		pinctrl-names = "default";
 		pinctrl-0 = <&spkr_2_sd_n_default>;
+		pinctrl-names = "default";
 		powerdown-gpios = <&tlmm 179 GPIO_ACTIVE_LOW>;
 		#thermal-sensor-cells = <0>;
 		sound-name-prefix = "SpkrRight";
@@ -1271,11 +1235,6 @@
 	status = "okay";
 };
 
-&venus {
-	firmware-name = "qcom/sc8280xp/HUAWEI/gaokun3/qcvss8280.mbn";
-	status = "okay";
-};
-
 &wsamacro {
 	status = "okay";
 };
@@ -1329,31 +1288,6 @@
 			function = "gpio";
 			bias-pull-down;
 		};
-	};
-
-	disp_reset_n: disp-reset-n-state {
-		reset-n-pins {
-			pins = "gpio38";
-			function = "gpio";
-			drive-strength = <2>;
-			bias-pull-up;
-			output-high;
-		};
-
-		tp-reset-n-pins {
-			pins = "gpio99";
-			function = "gpio";
-			drive-strength = <2>;
-			bias-disable;
-			output-high;
-		};
-	};
-
-	ec_int_state: ec-int-state-state {
-		pins = "gpio107";
-		function = "gpio";
-		drive-strength = <2>;
-		bias-disable;
 	};
 
 	i2c4_default: i2c4-default-state {
@@ -1448,7 +1382,7 @@
 			output-high;
 		};
 	};
-/*	
+
 	ts0_default: ts0-default-state {
 		int-n-pins {
 			pins = "gpio175";
@@ -1464,13 +1398,6 @@
 			bias-disable;
 			output-high;
 		};
-	};
-*/
-	ts0_default: ts0-default-state {
-		pins = "gpio175";
-		function = "gpio";
-		drive-strength = <2>;
-		bias-pull-up;
 	};
 
 	uart2_default: uart2-default-state {
@@ -1501,6 +1428,20 @@
 		};
 	};
 
+	usb0_sbu_default: usb0-sbu-state {
+		pins = "gpio164";
+		function = "gpio";
+		bias-disable;
+		drive-strength = <16>;
+	};
+
+	usb1_sbu_default: usb1-sbu-state {
+		pins = "gpio47";
+		function = "gpio";
+		bias-disable;
+		drive-strength = <16>;
+	};
+
 	wcd_default: wcd-default-state {
 		reset-pins {
 			pins = "gpio106";
@@ -1515,5 +1456,4 @@
 		drive-strength = <8>;
 		bias-pull-down;
 	};
-
 };
