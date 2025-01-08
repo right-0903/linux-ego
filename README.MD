@@ -80,9 +80,23 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 ---
 
 ## Altmode
-Support DisplayPort 1.1 with 2-lane only for now, Johan mentioned [this](https://github.com/jhovold/linux/wiki/X13s#USB) also, but we don't require insert orientation.
+Support 2-lane only for now, Johan mentioned [this](https://github.com/jhovold/linux/wiki/X13s#USB) also, but we don't require insert orientation.
 
-2.7Gbps per lane, data rate is 4.32Gbps, basically, it means you can only use 1920x1080@60Hz. However, if we tweak the timings(at your risks), we can support a decent resolution with a rich timings, 24bpp with 2048(+180H.Blanking)x1280(+60V.Blanking)@60hz $\approx$ 4.30Gbps. If the bandwidth limit is exceeded, your bpp will be degraded to 18 (or lower?) to make actual bandwidth under the limit.
+In default, the bandwidth of per lane is limited to 5.4Gbps(HBR2, DisplayPort 1.2 or later). If you want to a higher limit, set this.
+
+```
+...
+&mdss0_dp0_out {
+...
+        link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
+...
+};
+...
+```
+
+According to the [dcoument](https://learn.microsoft.com/en-us/windows/arm/dev-kit/#set-up-display---how-to-connect-monitors) of Windows Dev Kit 2023, USB-C ports support 8.1Gbps per lane(HBR3, DisplayPort 1.3 or later).
+
+In my case, the monitor supports DisplayPort 1.1 with 2.7Gbps per lane, data rate is 4.32Gbps(8b10b coding), basically, it means I can only use 1920x1080@60Hz. However, if we tweak the timings(at your risks), we can support a decent resolution with a rich timings, 24bpp with 2048(+180H.Blanking)x1280(+60V.Blanking)@60hz $\approx$ 4.30Gbps. If the bandwidth limit is exceeded, your bpp will be degraded to 18 (or lower?) to make actual bandwidth under the limit.
 
 This part is not that stable, you may get a auto reset when you plug out or replug, after all, I havn't mastered the whole procedure yet(Reversing is like that, you can't ask for too much or perfect, lol), some of them are related to Qualcomm's quirks, some are my code issues. I am working on it to minimize the potential harm to your device.
 
