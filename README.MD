@@ -80,6 +80,10 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 ---
 
 ## Altmode
+
+> [!CAUTION]
+> Recently, UCSI subsystem is buggy for this tablet. Chances are that failed to boot(auto reboot). Only plug into Type-C ports after booting up.
+
 Support 2-lane only for now, Johan mentioned [this](https://github.com/jhovold/linux/wiki/X13s#USB) also, but we don't require insert orientation.
 
 In default, the bandwidth of per lane is limited to 5.4Gbps(HBR2, DisplayPort 1.2 or later). If you want to a higher limit, set this.
