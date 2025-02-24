@@ -65,7 +65,8 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 | RTC | works | |
 | Suspend | works | s2idle |
 | Thermal sensors | works | partial I think |
-| Touchscreen | partial | weird behavior |
+| Touchscreen over i2c | partial | weird behavior, I think NHLOS use this, such as BIOS configuration |
+| Touchscreen over spi | x | Anyways, it uses spi on Windows. Driver reference[1](https://github.com/MiCode/Xiaomi_Kernel_OpenSource/tree/dagu-s-oss/drivers/input/touchscreen/hxchipset), [2](https://lore.kernel.org/all/TY0PR06MB5611B4E88D79DE738241F5639E0F2@TY0PR06MB5611.apcprd06.prod.outlook.com), [3](https://lore.kernel.org/all/20231017091900.801989-1-tylor_yang@himax.corp-partner.google.com), it is a suffering to port it. |
 | TPM | x | |
 | USB | works | |
 | USB-PD | works | With UCSI EC driver, charging power is up to 45W compared to 23w before, can be used as sink and source |

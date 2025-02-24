@@ -27,9 +27,10 @@
 	compatible = "huawei,gaokun3", "qcom,sc8280xp";
 
 	aliases {
-		i2c4 = &i2c4;
 		i2c15 = &i2c15;
 		serial1 = &uart2;
+		spi6 = &spi6;
+		spi20 = &spi20;
 	};
 
 	chosen {
@@ -595,30 +596,6 @@
 	};
 };
 
-&i2c4 {
-	clock-frequency = <400000>;
-
-	pinctrl-0 = <&i2c4_default>;
-	pinctrl-names = "default";
-
-	status = "okay";
-
-	touchscreen@4f {
-		compatible = "hid-over-i2c";
-		reg = <0x4f>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 175 IRQ_TYPE_LEVEL_LOW>;
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_s10b>;
-
-		pinctrl-0 = <&ts0_default>;
-		pinctrl-names = "default";
-	};
-
-};
-
 &i2c15 {
 	clock-frequency = <400000>;
 
@@ -1034,6 +1011,50 @@
 	};
 };
 
+/* THPA, HIMX0001 */
+&spi6 {
+	pinctrl-0 = <&spi6_default>;
+    	pinctrl-names = "default";
+
+	status = "okay";
+
+	touchscreen@0 {
+		compatible = "himax,hx83121a-ts";
+		reg = <0>;
+
+		interrupts-extended = <&tlmm 175 IRQ_TYPE_LEVEL_LOW>;
+		reset-gpios = <&tlmm 99 GPIO_ACTIVE_LOW>;
+
+		spi-max-frequency = <12000000>;
+
+		himax,panel-coords = <0 1600 0 2560>;
+		himax,display-coords = <0 1600 0 2560>;
+
+		pinctrl-0 = <&ts0_default>;
+		pinctrl-names = "default";
+	};
+};
+
+/* THPB, HIMX0002 */
+&spi20 {
+	pinctrl-0 = <&spi20_default>;
+    	pinctrl-names = "default";
+
+	status = "okay";
+
+	stylus@0 {
+		compatible = "himax,hx83121a-ts-stylus";
+		reg = <0>;
+
+		interrupts-extended = <&tlmm 39 IRQ_TYPE_LEVEL_LOW>;
+
+		spi-max-frequency = <12000000>;
+
+		pinctrl-0 = <&stylus_int_n_default>;
+		pinctrl-names = "default";
+	};
+};
+
 &swr0 {
 	status = "okay";
 
@@ -1360,6 +1381,80 @@
 			function = "gpio";
 			drive-strength = <2>;
 			bias-pull-up;
+		};
+	};
+
+	stylus_int_n_default: stylus-int-n-state {
+			pins = "gpio39";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+			output-high;
+	};
+
+	spi6_default: spi6-default-state {
+		miso-n-pins {
+			pins = "gpio154";
+			function = "qup6";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+
+		mosi-n-pins {
+			pins = "gpio155";
+			function = "qup6";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-high;
+		};
+
+		clk-n-pins {
+			pins = "gpio156";
+			function = "qup6";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-high;
+		};
+
+		cs-n-pins {
+			pins = "gpio157";
+			function = "qup6";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-high;
+		};
+	};
+
+	spi20_default: spi20-default-state {
+		miso-n-pins {
+			pins = "gpio87";
+			function = "qup20";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+
+		mosi-n-pins {
+			pins = "gpio88";
+			function = "qup20";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-high;
+		};
+
+		clk-n-pins {
+			pins = "gpio89";
+			function = "qup20";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-high;
+		};
+
+		cs-n-pins {
+			pins = "gpio90";
+			function = "qup20";
+			drive-strength = <2>;
+			bias-pull-down;
+			output-high;
 		};
 	};
 
