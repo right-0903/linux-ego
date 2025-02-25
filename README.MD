@@ -46,7 +46,7 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 | Backlight | x | DSI DCS-based backlight control, control method had been figured out. There is an I2C baclkight IC, power supply and how to enable keep unknown |
 | Battery | works | some attributes are hidden, like cycle count is also supported |
 | Bluetooth | works | RF performance is incredible when you have set calibration data for wifi(they are both on the chip of WCN6855) |
-| Camera | x | have no plan to support them yet |
+| Camera | x | WIP |
 | CPUfreq | works | |
 | Display | x | [There](https://linaro.github.io/msm/soc/sc8280xp) is no DSI driver for SC8280XP now. I added some patches to [*patch sets*](./patch%20sets/WIP/DSI/) folder, but still not work |
 | Display sensors | x | for rotation detect, light detect, etc. Added slpi nodes, but how can we access it? |
@@ -151,8 +151,10 @@ Explanation, refer to Huawei support [page](https://consumer.huawei.com/en/suppo
 If you set charging control on Windows, like 90%, then `smart_charge` would be `1 72 85 90`, `charge_control_thresholds` would be reset to `85 90` also.
 
 ## Camera
-* front: hi846 or s5k4h7
-* rear: ov13b10 or s5k3l6
+* front camera sensor: hi846(cci2, gpio12: cci_i2c_sda, gpio13: cci_i2c_scl)
+* rear camera sensor: s5k3l6(cci1, gpio10: cci_i2c_sda, gpio11: cci_i2c_scl)
+
+After hacking windows driver, they are exactly here, but I can't detect slaves with `i2cdetect`.
 
 ## Display
 There are too many unknowns(dsi support, dual dsi with video mode dsc, gpio, power supply, backlight, etc), no actual progress can be confirmed, I have uploaded all my progress, if you have an idea, then go ahead.
