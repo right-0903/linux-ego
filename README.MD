@@ -16,6 +16,8 @@ This project mainly refers to the following projects:
 ## Upstream Progress
 Initial dt support will land on 6.14, currently, they are in qcom `-next` tree, see [here](https://git.kernel.org/pub/scm/linux/kernel/git/qcom/linux.git/log/?h=for-next&qt=grep&q=Pengyu+Luo).
 
+Initial EC support will land on 6.15, currently, they are in pdx `-next` tree, see [here](https://web.git.kernel.org/pub/scm/linux/kernel/git/pdx86/platform-drivers-x86.git/log/?h=for-next&qt=author&q=Pengyu+Luo).
+
 ## Disclaimer
 I am just an amateur, a Linux noob, not educated with formal CS courses. You should never believe what I say below, except this sentence. I am not responsible for your actions; you do this all at your own risk!
 
