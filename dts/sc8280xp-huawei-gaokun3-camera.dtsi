@@ -1,0 +1,149 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ */
+
+#include <dt-bindings/leds/common.h>
+
+/ {
+	leds {
+		compatible = "gpio-leds";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&camf_indicator_en>;
+
+		flash_camf: led-camera-indicator {
+			label = "white:camera-indicator";
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_WHITE>;
+			gpios = <&tlmm 34 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "none";
+			default-state = "off";
+			/* Reuse as a panic indicator until we get a "camera on" trigger */
+			panic-indicator;
+		};
+	};
+
+	vreg_camf_1v2: regulator-camf-lv2 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "CAMF_1V2";
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+
+		gpio = <&tlmm 44 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-0 = <&camf_lv2_reg_en>;
+		pinctrl-names = "default";
+
+		regulator-boot-on;
+	};
+};
+
+&camss {
+
+	/* CSIPHY0 CSIPHY1 1.2v = l4d, 0.88v = l6d
+	 * TODO: CSIPHY2, CSIPHY3 1.2v = l3b, 0.88v = l6b
+	 */
+
+	vdda-phy-supply = <&vreg_l6d>;
+	vdda-pll-supply = <&vreg_l4d>;
+
+	status = "okay";
+
+	ports {
+		port@0 { The port index denotes CSIPHY id i.e. csiphy0
+			csiphy0_lanes01_ep: endpoint@0 {
+				reg = <0>;
+				clock-lanes = <7>; required
+				data-lanes = <0 1>;
+				remote-endpoint = <&hi846_ep>;
+			};
+		};
+	};
+};
+
+
+&cci1 {
+	status = "okay";
+};
+/*
+&cci1_i2c0 {
+	vcm@c {
+	};
+
+	camera_rear: camera@10 {
+		reg = <0x10>;
+		clocks = <&camcc CAMCC_MCLK4_CLK>;
+	};
+};
+*/
+
+&cci2 {
+	status = "okay";
+};
+
+&cci2_i2c1 {
+	camera_front: camera@20 {
+		compatible = "hynix,hi846";
+		reg = <0x20>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&camf_rgb_default>;
+
+		clocks = <&camcc CAMCC_MCLK3_CLK>;
+		clock-frequency = <24000000>; dummy, the default one is 19.2Mhz
+
+		reset-gpios = <&tlmm 15 GPIO_ACTIVE_LOW>;
+		vddio-supply = <&vreg_l2c>;
+		vdda-supply = <&vreg_l11c>;
+		vddd-supply = <&vreg_camf_1v2>;
+
+		orientation = <0>;	/* Front facing */
+		rotation = <90>;
+
+//		flash-leds = <&flash_camf>;
+
+		port {
+			hi846_ep: endpoint {
+				data-lanes = <1 2>;
+				link-frequencies = /bits/ 64 <80000000 200000000>;
+				remote-endpoint = <&csiphy0_lanes01_ep>;
+			};
+		};
+	};
+};
+
+&tlmm {
+
+	camf_indicator_en: camf-indicator-en-state {
+		pins = "gpio34";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	camf_lv2_reg_en: camf-lv2-reg-en-state {
+		pins = "gpio44";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	camf_rgb_default: camf-rgb-default-state {
+		mclk-pins {
+			pins = "gpio17";
+			function = "cam_mclk";
+			drive-strength = <16>;
+			bias-disable;
+		};
+
+		sc-rgb-xshut-n-pins {
+			pins = "gpio15";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+};

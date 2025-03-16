@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Huawei Matebook E Go (sc8280xp) Embedded Controller
+ * Huawei Matebook E Go Embedded Controller
  *
- * Copyright (C) 2024 Pengyu Luo <mitltlatltl@gmail.com>
+ * Copyright (C) 2024-2025 Pengyu Luo <mitltlatltl@gmail.com>
  */
 
 #ifndef __HUAWEI_GAOKUN_EC_H__
 #define __HUAWEI_GAOKUN_EC_H__
 
 #define GAOKUN_UCSI_CCI_SIZE	4
-#define GAOKUN_UCSI_DATA_SIZE	16
-#define GAOKUN_UCSI_READ_SIZE	(GAOKUN_UCSI_CCI_SIZE + GAOKUN_UCSI_DATA_SIZE)
-#define GAOKUN_UCSI_WRITE_SIZE	0x18
+#define GAOKUN_UCSI_MSGI_SIZE	16
+#define GAOKUN_UCSI_READ_SIZE	(GAOKUN_UCSI_CCI_SIZE + GAOKUN_UCSI_MSGI_SIZE)
+#define GAOKUN_UCSI_WRITE_SIZE	24 /* 8B CTRL, 16B MSGO */
 
 #define GAOKUN_UCSI_NO_PORT_UPDATE	(-1)
 
@@ -20,6 +20,7 @@
 /* -------------------------------------------------------------------------- */
 
 struct gaokun_ec;
+struct gaokun_ucsi_reg;
 struct notifier_block;
 
 #define GAOKUN_MOD_NAME			"huawei_gaokun_ec"
@@ -36,11 +37,11 @@ void gaokun_ec_unregister_notify(struct gaokun_ec *ec,
 
 int gaokun_ec_read(struct gaokun_ec *ec, const u8 *req,
 		   size_t resp_len, u8 *resp);
-int gaokun_ec_write(struct gaokun_ec *ec, u8 *req);
-int gaokun_ec_read_byte(struct gaokun_ec *ec, u8 *req, u8 *byte);
+int gaokun_ec_write(struct gaokun_ec *ec, const u8 *req);
+int gaokun_ec_read_byte(struct gaokun_ec *ec, const u8 *req, u8 *byte);
 
 /* -------------------------------------------------------------------------- */
-/* API For PSY */
+/* API for PSY */
 
 int gaokun_ec_psy_multi_read(struct gaokun_ec *ec, u8 reg,
 			     size_t resp_len, u8 *resp);
@@ -57,25 +58,22 @@ static inline int gaokun_ec_psy_read_word(struct gaokun_ec *ec,
 	return gaokun_ec_psy_multi_read(ec, reg, sizeof(*word), (u8 *)word);
 }
 
-int gaokun_ec_psy_get_threshold(struct gaokun_ec *ec, u8 *value, int ind);
-int gaokun_ec_psy_set_threshold(struct gaokun_ec *ec, u8 start, u8 end);
+int gaokun_ec_psy_get_smart_charge(struct gaokun_ec *ec,
+				   u8 resp[GAOKUN_SMART_CHARGE_DATA_SIZE]);
+int gaokun_ec_psy_set_smart_charge(struct gaokun_ec *ec,
+				   const u8 req[GAOKUN_SMART_CHARGE_DATA_SIZE]);
 
 int gaokun_ec_psy_get_smart_charge_enable(struct gaokun_ec *ec, bool *on);
 int gaokun_ec_psy_set_smart_charge_enable(struct gaokun_ec *ec, bool on);
 
-int gaokun_ec_psy_get_smart_charge(struct gaokun_ec *ec,
-				   u8 data[GAOKUN_SMART_CHARGE_DATA_SIZE]);
-int gaokun_ec_psy_set_smart_charge(struct gaokun_ec *ec,
-				   u8 data[GAOKUN_SMART_CHARGE_DATA_SIZE]);
-
 /* -------------------------------------------------------------------------- */
-/* API For UCSI */
+/* API for UCSI */
 
 int gaokun_ec_ucsi_read(struct gaokun_ec *ec, u8 resp[GAOKUN_UCSI_READ_SIZE]);
 int gaokun_ec_ucsi_write(struct gaokun_ec *ec,
 			 const u8 req[GAOKUN_UCSI_WRITE_SIZE]);
 
-int gaokun_ec_ucsi_get_reg(struct gaokun_ec *ec, u8 *ureg);
+int gaokun_ec_ucsi_get_reg(struct gaokun_ec *ec, struct gaokun_ucsi_reg *ureg);
 int gaokun_ec_ucsi_pan_ack(struct gaokun_ec *ec, int port_id);
 
 

@@ -2,11 +2,7 @@
 /*
  * ucsi-huawei-gaokun - A UCSI driver for HUAWEI Matebook E Go
  *
- * reference: drivers/usb/typec/ucsi/ucsi_yoga_c630.c
- *            drivers/usb/typec/ucsi/ucsi_glink.c
- *            drivers/soc/qcom/pmic_glink_altmode.c
- *
- * Copyright (C) 2024 Pengyu Luo <mitltlatltl@gmail.com>
+ * Copyright (C) 2024-2025 Pengyu Luo <mitltlatltl@gmail.com>
  */
 
 #include <drm/bridge/aux-bridge.h>
@@ -17,14 +13,13 @@
 #include <linux/module.h>
 #include <linux/notifier.h>
 #include <linux/of.h>
-// #include <linux/platform_data/huawei-gaokun-ec.h>
+#include "huawei-gaokun-ec.h"
 #include <linux/string.h>
 #include <linux/usb/pd_vdo.h>
 #include <linux/usb/typec_altmode.h>
 #include <linux/usb/typec_dp.h>
 #include <linux/workqueue_types.h>
 
-#include "huawei-gaokun-ec.h"
 #include "ucsi.h"
 
 #define EC_EVENT_UCSI	0x21
@@ -54,6 +49,7 @@ enum gaokun_ucsi_mux {
 	USBC_MUX_DP_4L,
 	USBC_MUX_USB_DP,
 };
+
 /* based on pmic_glink_altmode_pin_assignment */
 enum gaokun_ucsi_dpam_pan {	/* DP Alt Mode Pin Assignments */
 	USBC_DPAM_PAN_NONE,
@@ -72,7 +68,7 @@ enum gaokun_ucsi_dpam_pan {	/* DP Alt Mode Pin Assignments */
 };
 
 struct gaokun_ucsi_reg {
-	u8 port_num;
+	u8 num_ports;
 	u8 port_updt;
 	u8 port_data[4];
 	u8 checksum;
@@ -81,7 +77,7 @@ struct gaokun_ucsi_reg {
 
 struct gaokun_ucsi_port {
 	struct completion usb_ack;
-	spinlock_t lock;
+	spinlock_t lock; /* serializing port resource access */
 
 	struct gaokun_ucsi *ucsi;
 	struct auxiliary_device *bridge;
@@ -103,7 +99,7 @@ struct gaokun_ucsi {
 	struct delayed_work work;
 	struct notifier_block nb;
 	u16 version;
-	u8 port_num;
+	u8 num_ports;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -145,7 +141,7 @@ static int gaokun_ucsi_read_message_in(struct ucsi *ucsi,
 		return ret;
 
 	memcpy(val, buf + GAOKUN_UCSI_CCI_SIZE,
-	       min(val_len, GAOKUN_UCSI_DATA_SIZE));
+	       min(val_len, GAOKUN_UCSI_MSGI_SIZE));
 
 	return 0;
 }
@@ -164,7 +160,7 @@ static void gaokun_ucsi_update_connector(struct ucsi_connector *con)
 {
 	struct gaokun_ucsi *uec = ucsi_get_drvdata(con->ucsi);
 
-	if (con->num > uec->port_num)
+	if (con->num > uec->num_ports)
 		return;
 
 	con->typec_cap.orientation_aware = true;
@@ -189,8 +185,8 @@ static void gaokun_ucsi_connector_status(struct ucsi_connector *con)
 	int idx;
 
 	idx = con->num - 1;
-	if (con->num > uec->port_num) {
-		dev_warn(uec->ucsi->dev, "set orientation out of range: con%d\n", idx);
+	if (con->num > uec->num_ports) {
+		dev_warn(uec->dev, "set orientation out of range: con%d\n", idx);
 		return;
 	}
 
@@ -213,7 +209,7 @@ const struct ucsi_operations gaokun_ucsi_ops = {
 static void gaokun_ucsi_port_update(struct gaokun_ucsi_port *port,
 				    const u8 *port_data)
 {
-	struct ucsi *ucsi = port->ucsi->ucsi;
+	struct gaokun_ucsi *uec = port->ucsi;
 	int offset = port->idx * 2; /* every port has 2 Bytes data */
 	unsigned long flags;
 	u8 dcc, ddi;
@@ -247,7 +243,7 @@ static void gaokun_ucsi_port_update(struct gaokun_ucsi_port *port,
 		port->mode = TYPEC_STATE_SAFE;
 		break;
 	default:
-		dev_warn(ucsi->dev, "unknow mode %d\n", port->mode);
+		dev_warn(uec->dev, "unknown mode %d\n", port->mode);
 		break;
 	}
 
@@ -264,7 +260,7 @@ static void gaokun_ucsi_port_update(struct gaokun_ucsi_port *port,
 		port->svid = USB_SID_DISPLAYPORT;
 		break;
 	default:
-		dev_warn(ucsi->dev, "unknow mux state %d\n", port->mux);
+		dev_warn(uec->dev, "unknown mux state %d\n", port->mux);
 		break;
 	}
 
@@ -276,14 +272,14 @@ static int gaokun_ucsi_refresh(struct gaokun_ucsi *uec)
 	struct gaokun_ucsi_reg ureg;
 	int ret, idx;
 
-	ret = gaokun_ec_ucsi_get_reg(uec->ec, (u8 *)&ureg);
+	ret = gaokun_ec_ucsi_get_reg(uec->ec, &ureg);
 	if (ret)
 		return GAOKUN_UCSI_NO_PORT_UPDATE;
 
-	uec->port_num = ureg.port_num;
+	uec->num_ports = ureg.num_ports;
 	idx = GET_IDX(ureg.port_updt);
 
-	if (idx < 0 || idx >= ureg.port_num)
+	if (idx < 0 || idx >= ureg.num_ports)
 		return GAOKUN_UCSI_NO_PORT_UPDATE;
 
 	gaokun_ucsi_port_update(&uec->ports[idx], ureg.port_data);
@@ -295,8 +291,8 @@ static void gaokun_ucsi_handle_altmode(struct gaokun_ucsi_port *port)
 	struct gaokun_ucsi *uec = port->ucsi;
 	int idx = port->idx;
 
-	if (idx >= uec->ucsi->cap.num_connectors || !uec->ucsi->connector) {
-		dev_warn(uec->ucsi->dev, "altmode port out of range: %d\n", idx);
+	if (idx >= uec->ucsi->cap.num_connectors) {
+		dev_warn(uec->dev, "altmode port out of range: %d\n", idx);
 		return;
 	}
 
@@ -314,11 +310,33 @@ static void gaokun_ucsi_altmode_notify_ind(struct gaokun_ucsi *uec)
 {
 	int idx;
 
+	if (!uec->ucsi->connector) { /* slow to register */
+		dev_err_ratelimited(uec->dev, "ucsi connector is not initialized yet\n");
+		return;
+	}
+
 	idx = gaokun_ucsi_refresh(uec);
 	if (idx == GAOKUN_UCSI_NO_PORT_UPDATE)
 		gaokun_ec_ucsi_pan_ack(uec->ec, idx); /* ack directly if no update */
 	else
 		gaokun_ucsi_handle_altmode(&uec->ports[idx]);
+}
+
+/*
+ * When inserting, 2 UCSI events(connector change) are followed by USB events.
+ * If we received one USB event, that means USB events are not blocked, so we
+ * can complelte for all ports, and we should signal all events.
+ */
+static void gaokun_ucsi_complete_usb_ack(struct gaokun_ucsi *uec)
+{
+	struct gaokun_ucsi_port *port;
+	int idx = 0;
+
+	while (idx < uec->num_ports) {
+		port = &uec->ports[idx++];
+		if (!completion_done(&port->usb_ack))
+			complete_all(&port->usb_ack);
+	}
 }
 
 /*
@@ -345,11 +363,12 @@ static int gaokun_ucsi_notify(struct notifier_block *nb,
 
 	switch (action) {
 	case EC_EVENT_USB:
+		gaokun_ucsi_complete_usb_ack(uec);
 		gaokun_ucsi_altmode_notify_ind(uec);
 		return NOTIFY_OK;
 
 	case EC_EVENT_UCSI:
-		uec->ucsi->ops->read_cci(uec->ucsi, &cci);
+		gaokun_ucsi_read_cci(uec->ucsi, &cci);
 		ucsi_notify_common(uec->ucsi, cci);
 		if (UCSI_CCI_CONNECTOR(cci))
 			gaokun_ucsi_handle_no_usb_event(uec, UCSI_CCI_CONNECTOR(cci) - 1);
@@ -361,33 +380,23 @@ static int gaokun_ucsi_notify(struct notifier_block *nb,
 	}
 }
 
-static int gaokun_ucsi_get_port_num(struct gaokun_ucsi *uec)
-{
-	struct gaokun_ucsi_reg ureg;
-	int ret;
-
-	ret = gaokun_ec_ucsi_get_reg(uec->ec, (u8 *)&ureg);
-
-	return ret ? 0 : ureg.port_num;
-}
-
 static int gaokun_ucsi_ports_init(struct gaokun_ucsi *uec)
 {
-	u32 port;
-	int i, ret, port_num;
-	struct device *dev = uec->dev;
 	struct gaokun_ucsi_port *ucsi_port;
+	struct gaokun_ucsi_reg ureg = {};
+	struct device *dev = uec->dev;
 	struct fwnode_handle *fwnode;
+	int i, ret, num_ports;
+	u32 port;
 
-	port_num = gaokun_ucsi_get_port_num(uec);
-	uec->port_num = port_num;
-
-	uec->ports = devm_kzalloc(dev, port_num * sizeof(*(uec->ports)),
+	gaokun_ec_ucsi_get_reg(uec->ec, &ureg);
+	num_ports = ureg.num_ports;
+	uec->ports = devm_kcalloc(dev, num_ports, sizeof(*(uec->ports)),
 				  GFP_KERNEL);
 	if (!uec->ports)
 		return -ENOMEM;
 
-	for (i = 0; i < port_num; ++i) {
+	for (i = 0; i < num_ports; ++i) {
 		ucsi_port = &uec->ports[i];
 		ucsi_port->ccx = USBC_CCX_NONE;
 		ucsi_port->idx = i;
@@ -404,7 +413,7 @@ static int gaokun_ucsi_ports_init(struct gaokun_ucsi *uec)
 			return ret;
 		}
 
-		if (port >= port_num) {
+		if (port >= num_ports) {
 			dev_warn(dev, "invalid connector number %d, ignoring\n", port);
 			continue;
 		}
@@ -417,7 +426,7 @@ static int gaokun_ucsi_ports_init(struct gaokun_ucsi *uec)
 		}
 	}
 
-	for (i = 0; i < port_num; i++) {
+	for (i = 0; i < num_ports; i++) {
 		if (!uec->ports[i].bridge)
 			continue;
 
@@ -437,8 +446,6 @@ static void gaokun_ucsi_register_worker(struct work_struct *work)
 
 	uec = container_of(work, struct gaokun_ucsi, work.work);
 	ucsi = uec->ucsi;
-	/* This may be a problem specific to sc8280xp-based machines */
-	ucsi->quirks = UCSI_NO_PARTNER_PDOS | UCSI_DELAY_DEVICE_PDOS;
 
 	ret = gaokun_ec_register_notify(uec->ec, &uec->nb);
 	if (ret) {
@@ -449,14 +456,6 @@ static void gaokun_ucsi_register_worker(struct work_struct *work)
 	ret = ucsi_register(ucsi);
 	if (ret)
 		dev_err_probe(ucsi->dev, ret, "ucsi register failed\n");
-}
-
-static inline int gaokun_ucsi_register(struct gaokun_ucsi *uec)
-{
-	/* EC can't handle UCSI properly in the early stage */
-	schedule_delayed_work(&uec->work, 3 * HZ);
-
-	return 0;
 }
 
 static int gaokun_ucsi_probe(struct auxiliary_device *adev,
@@ -473,7 +472,7 @@ static int gaokun_ucsi_probe(struct auxiliary_device *adev,
 
 	uec->ec = ec;
 	uec->dev = dev;
-	uec->version = 0x0100;
+	uec->version = UCSI_VERSION_1_0;
 	uec->nb.notifier_call = gaokun_ucsi_notify;
 
 	INIT_DELAYED_WORK(&uec->work, gaokun_ucsi_register_worker);
@@ -489,7 +488,10 @@ static int gaokun_ucsi_probe(struct auxiliary_device *adev,
 	ucsi_set_drvdata(uec->ucsi, uec);
 	auxiliary_set_drvdata(adev, uec);
 
-	return gaokun_ucsi_register(uec);
+	/* EC can't handle UCSI properly in the early stage */
+	schedule_delayed_work(&uec->work, 3 * HZ);
+
+	return 0;
 }
 
 static void gaokun_ucsi_remove(struct auxiliary_device *adev)

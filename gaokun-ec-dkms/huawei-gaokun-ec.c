@@ -2,14 +2,11 @@
 /*
  * huawei-gaokun-ec - An EC driver for HUAWEI Matebook E Go
  *
- * reference: drivers/platform/arm64/acer-aspire1-ec.c
- *            drivers/platform/arm64/lenovo-yoga-c630.c
- *            drivers/platform/x86/huawei-wmi.c
- *
- * Copyright (C) 2024 Pengyu Luo <mitltlatltl@gmail.com>
+ * Copyright (C) 2024-2025 Pengyu Luo <mitltlatltl@gmail.com>
  */
 
 #include <linux/auxiliary_bus.h>
+#include <linux/cleanup.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/hwmon.h>
@@ -19,9 +16,6 @@
 #include <linux/notifier.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
-// #include <linux/platform_data/huawei-gaokun-ec.h>
-#include <linux/version.h>
-
 #include "huawei-gaokun-ec.h"
 
 #define EC_EVENT		0x06
@@ -34,50 +28,89 @@
 
 #define EC_FN_LOCK_ON		0x5A
 #define EC_FN_LOCK_OFF		0x55
+#define EC_FN_LOCK_READ		0x6B
+#define EC_FN_LOCK_WRITE	0x6C
 
 #define EC_EVENT_LID		0x81
 
 #define EC_LID_STATE		0x80
 #define EC_LID_OPEN		BIT(1)
 
+#define EC_TEMP_REG		0x61
+
+#define EC_STANDBY_REG		0xB2
+#define EC_STANDBY_ENTER	0xDB
+#define EC_STANDBY_EXIT		0xEB
+
+enum gaokun_ec_smart_charge_cmd {
+	SMART_CHARGE_DATA_WRITE = 0xE3,
+	SMART_CHARGE_DATA_READ,
+	SMART_CHARGE_ENABLE_WRITE,
+	SMART_CHARGE_ENABLE_READ,
+};
+
+enum gaokun_ec_ucsi_cmd {
+	UCSI_REG_WRITE = 0xD2,
+	UCSI_REG_READ,
+	UCSI_DATA_WRITE,
+	UCSI_DATA_READ,
+};
+
 #define UCSI_REG_SIZE		7
 
 /*
- * for tx, command sequences are arranged as
+ * For tx, command sequences are arranged as
  * {master_cmd, slave_cmd, data_len, data_seq}
  */
 #define REQ_HDR_SIZE		3
 #define INPUT_SIZE_OFFSET	2
+#define REQ_LEN(req) (REQ_HDR_SIZE + (req)[INPUT_SIZE_OFFSET])
 
 /*
- * for rx, data sequences are arranged as
+ * For rx, data sequences are arranged as
  * {status, data_len(unreliable), data_seq}
  */
 #define RESP_HDR_SIZE		2
 
-#define REQ_LEN(req) (req[INPUT_SIZE_OFFSET] + REQ_HDR_SIZE)
-
 #define MKREQ(REG0, REG1, SIZE, ...)			\
 {							\
+	REG0, REG1, SIZE,				\
 	/* ## will remove comma when SIZE is 0 */	\
-	REG0, REG1, SIZE, ## __VA_ARGS__,		\
+	## __VA_ARGS__,					\
 	/* make sure len(pkt[3:]) >= SIZE */		\
-	[3 + SIZE] = 0,					\
+	[3 + (SIZE)] = 0,				\
 }
 
 #define MKRESP(SIZE)				\
 {						\
-	[RESP_HDR_SIZE + SIZE - 1] = 0,		\
+	[RESP_HDR_SIZE + (SIZE) - 1] = 0,	\
 }
 
+/* Possible size 1, 4, 20, 24. Most of the time, the size is 1. */
 static inline void refill_req(u8 *dest, const u8 *src, size_t size)
 {
 	memcpy(dest + REQ_HDR_SIZE, src, size);
 }
 
+static inline void refill_req_byte(u8 *dest, const u8 *src)
+{
+	dest[REQ_HDR_SIZE] = *src;
+}
+
+/* Possible size 1, 2, 4, 7, 20. Most of the time, the size is 1. */
 static inline void extr_resp(u8 *dest, const u8 *src, size_t size)
 {
 	memcpy(dest, src + RESP_HDR_SIZE, size);
+}
+
+static inline void extr_resp_byte(u8 *dest, const u8 *src)
+{
+	*dest = src[RESP_HDR_SIZE];
+}
+
+static inline void *extr_resp_shallow(const u8 *src)
+{
+	return (void *)(src + RESP_HDR_SIZE);
 }
 
 struct gaokun_ec {
@@ -93,12 +126,12 @@ static int gaokun_ec_request(struct gaokun_ec *ec, const u8 *req,
 			     size_t resp_len, u8 *resp)
 {
 	struct i2c_client *client = ec->client;
-	struct i2c_msg msgs[2] = {
+	struct i2c_msg msgs[] = {
 		{
 			.addr = client->addr,
 			.flags = client->flags,
 			.len = REQ_LEN(req),
-			.buf = req,
+			.buf = (void *)req,
 		}, {
 			.addr = client->addr,
 			.flags = client->flags | I2C_M_RD,
@@ -106,28 +139,34 @@ static int gaokun_ec_request(struct gaokun_ec *ec, const u8 *req,
 			.buf = resp,
 		},
 	};
+	int ret;
 
-	mutex_lock(&ec->lock);
+	guard(mutex)(&ec->lock);
+	ret = i2c_transfer(client->adapter, msgs, ARRAY_SIZE(msgs));
+	if (ret != ARRAY_SIZE(msgs)) {
+		dev_err(&client->dev, "I2C transfer error %d\n", ret);
+		goto out_after_break;
+	}
 
-	i2c_transfer(client->adapter, msgs, ARRAY_SIZE(msgs));
-	usleep_range(2000, 2500); /* have a break, acpi did this */
+	ret = *resp;
+	if (ret)
+		dev_err(&client->dev, "EC transaction error %d\n", ret);
 
-	mutex_unlock(&ec->lock);
+out_after_break:
+	usleep_range(2000, 2500); /* have a break, ACPI did this */
 
-	return *resp;
+	return ret;
 }
 
 /* -------------------------------------------------------------------------- */
 /* Common API */
 
 /**
- * gaokun_ec_read - read from EC
- * @ec: The gaokun_ec
+ * gaokun_ec_read - Read from EC
+ * @ec: The gaokun_ec structure
  * @req: The sequence to request
  * @resp_len: The size to read
- * @resp: Where the data are read to
- *
- * Return: 0 on success or negative error code.
+ * @resp: The buffer to store response sequence
  *
  * This function is used to read data after writing a magic sequence to EC.
  * All EC operations depend on this function.
@@ -137,6 +176,8 @@ static int gaokun_ec_request(struct gaokun_ec *ec, const u8 *req,
  * to gaokun_ec_request), there is no good abstraction to generalize these
  * sequences, so just wrap it for now. Almost all magic sequences are kept
  * in this file.
+ *
+ * Return: 0 on success or negative error code.
  */
 int gaokun_ec_read(struct gaokun_ec *ec, const u8 *req,
 		   size_t resp_len, u8 *resp)
@@ -146,30 +187,30 @@ int gaokun_ec_read(struct gaokun_ec *ec, const u8 *req,
 EXPORT_SYMBOL_GPL(gaokun_ec_read);
 
 /**
- * gaokun_ec_write - write to EC
- * @ec: The gaokun_ec
+ * gaokun_ec_write - Write to EC
+ * @ec: The gaokun_ec structure
  * @req: The sequence to request
- *
- * Return: 0 on success or negative error code.
  *
  * This function has no big difference from gaokun_ec_read. When caller care
  * only write status and no actual data are returned, then use it.
+ *
+ * Return: 0 on success or negative error code.
  */
-int gaokun_ec_write(struct gaokun_ec *ec, u8 *req)
+int gaokun_ec_write(struct gaokun_ec *ec, const u8 *req)
 {
-	u8 resp[] = MKRESP(0);
+	u8 ec_resp[] = MKRESP(0);
 
-	return gaokun_ec_request(ec, req, sizeof(resp), resp);
+	return gaokun_ec_request(ec, req, sizeof(ec_resp), ec_resp);
 }
 EXPORT_SYMBOL_GPL(gaokun_ec_write);
 
-int gaokun_ec_read_byte(struct gaokun_ec *ec, u8 *req, u8 *byte)
+int gaokun_ec_read_byte(struct gaokun_ec *ec, const u8 *req, u8 *byte)
 {
 	int ret;
-	u8 resp[] = MKRESP(sizeof(*byte));
+	u8 ec_resp[] = MKRESP(sizeof(*byte));
 
-	ret = gaokun_ec_read(ec, req, sizeof(resp), resp);
-	extr_resp(byte, resp, sizeof(*byte));
+	ret = gaokun_ec_read(ec, req, sizeof(ec_resp), ec_resp);
+	extr_resp_byte(byte, ec_resp);
 
 	return ret;
 }
@@ -177,7 +218,7 @@ EXPORT_SYMBOL_GPL(gaokun_ec_read_byte);
 
 /**
  * gaokun_ec_register_notify - Register a notifier callback for EC events.
- * @ec: The gaokun_ec
+ * @ec: The gaokun_ec structure
  * @nb: Notifier block pointer to register
  *
  * Return: 0 on success or negative error code.
@@ -190,7 +231,7 @@ EXPORT_SYMBOL_GPL(gaokun_ec_register_notify);
 
 /**
  * gaokun_ec_unregister_notify - Unregister notifier callback for EC events.
- * @ec: The gaokun_ec
+ * @ec: The gaokun_ec structure
  * @nb: Notifier block pointer to unregister
  *
  * Unregister a notifier callback that was previously registered with
@@ -203,172 +244,226 @@ void gaokun_ec_unregister_notify(struct gaokun_ec *ec, struct notifier_block *nb
 EXPORT_SYMBOL_GPL(gaokun_ec_unregister_notify);
 
 /* -------------------------------------------------------------------------- */
-/* API For PSY */
+/* API for PSY */
 
+/**
+ * gaokun_ec_psy_multi_read - Read contiguous registers
+ * @ec: The gaokun_ec structure
+ * @reg: The start register
+ * @resp_len: The number of registers to be read
+ * @resp: The buffer to store response sequence
+ *
+ * Return: 0 on success or negative error code.
+ */
 int gaokun_ec_psy_multi_read(struct gaokun_ec *ec, u8 reg,
 			     size_t resp_len, u8 *resp)
 {
+	u8 ec_req[] = MKREQ(0x02, EC_READ, 1, 0);
+	u8 ec_resp[] = MKRESP(1);
 	int i, ret;
-	u8 _resp[] = MKRESP(1);
-	u8 req[] = MKREQ(0x02, EC_READ, 1, 0);
 
 	for (i = 0; i < resp_len; ++i, reg++) {
-		refill_req(req, &reg, 1);
-		ret = gaokun_ec_read(ec, req, sizeof(_resp), _resp);
+		refill_req_byte(ec_req, &reg);
+		ret = gaokun_ec_read(ec, ec_req, sizeof(ec_resp), ec_resp);
 		if (ret)
 			return ret;
-		extr_resp(&resp[i], _resp, 1);
+		extr_resp_byte(&resp[i], ec_resp);
 	}
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(gaokun_ec_psy_multi_read);
 
-/* Battery charging threshold */
-#define are_thresholds_valid(start, end) ((end != 0) && (start <= end) && (end <= 100))
-int gaokun_ec_psy_get_threshold(struct gaokun_ec *ec, u8 *value, int ind)
-{
-	/* GBTT */
-	return gaokun_ec_read_byte(ec, (u8 [])MKREQ(0x02, 0x69, 1, ind), value);
-}
-EXPORT_SYMBOL_GPL(gaokun_ec_psy_get_threshold);
-
-int gaokun_ec_psy_set_threshold(struct gaokun_ec *ec, u8 start, u8 end)
-{
-	/* SBTT */
-	int ret;
-	u8 req[] = MKREQ(0x02, 0x68, 2, 3, 0x5a);
-	u8 start_data_seq[] = {1, start};
-	u8 end_data_seq[] = {2, end};
-
-	ret = gaokun_ec_write(ec, req);
-	if (ret)
-		return -EIO;
-
-	if (are_thresholds_valid(start, end)) {
-		refill_req(req, start_data_seq, ARRAY_SIZE(start_data_seq));
-		ret = gaokun_ec_write(ec, req);
-		if (ret)
-			return -EIO;
-	/* FIXME: two transactions should be continous, can't be interrupted */
-		refill_req(req, end_data_seq, ARRAY_SIZE(end_data_seq));
-		ret = gaokun_ec_write(ec, req);
-	} else {
-		return -EINVAL;
-	}
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(gaokun_ec_psy_set_threshold);
-
-/* Smart charge enable */
-int gaokun_ec_psy_get_smart_charge_enable(struct gaokun_ec *ec, bool *on)
-{
-	/* GBAC */
-	*on = 0; /* clear other 3 Bytes */
-	return gaokun_ec_read_byte(ec, (u8 [])MKREQ(0x02, 0xE6, 0), (u8 *)on);
-}
-EXPORT_SYMBOL_GPL(gaokun_ec_psy_get_smart_charge_enable);
-
-int gaokun_ec_psy_set_smart_charge_enable(struct gaokun_ec *ec, bool on)
-{
-	/* SBAC */
-	return gaokun_ec_write(ec, (u8 [])MKREQ(0x02, 0xE5, 1, on));
-}
-EXPORT_SYMBOL_GPL(gaokun_ec_psy_set_smart_charge_enable);
-
 /* Smart charge */
+
+/**
+ * gaokun_ec_psy_get_smart_charge - Get smart charge data from EC
+ * @ec: The gaokun_ec structure
+ * @resp: The buffer to store response sequence (mode, delay, start, end)
+ *
+ * Return: 0 on success or negative error code.
+ */
 int gaokun_ec_psy_get_smart_charge(struct gaokun_ec *ec,
-				   u8 data[GAOKUN_SMART_CHARGE_DATA_SIZE])
+				   u8 resp[GAOKUN_SMART_CHARGE_DATA_SIZE])
 {
 	/* GBCM */
-	u8 req[] = MKREQ(0x02, 0xE4, 0);
-	u8 resp[] = MKRESP(GAOKUN_SMART_CHARGE_DATA_SIZE);
+	u8 ec_req[] = MKREQ(0x02, SMART_CHARGE_DATA_READ, 0);
+	u8 ec_resp[] = MKRESP(GAOKUN_SMART_CHARGE_DATA_SIZE);
 	int ret;
 
-	ret = gaokun_ec_read(ec, req, sizeof(resp), resp);
+	ret = gaokun_ec_read(ec, ec_req, sizeof(ec_resp), ec_resp);
 	if (ret)
-		return -EIO;
+		return ret;
 
-	extr_resp(data, resp, GAOKUN_SMART_CHARGE_DATA_SIZE);
+	extr_resp(resp, ec_resp, GAOKUN_SMART_CHARGE_DATA_SIZE);
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(gaokun_ec_psy_get_smart_charge);
 
+static inline bool validate_battery_threshold_range(u8 start, u8 end)
+{
+	return end != 0 && start <= end && end <= 100;
+}
+
+/**
+ * gaokun_ec_psy_set_smart_charge - Set smart charge data
+ * @ec: The gaokun_ec structure
+ * @req: The sequence to request (mode, delay, start, end)
+ *
+ * Return: 0 on success or negative error code.
+ */
 int gaokun_ec_psy_set_smart_charge(struct gaokun_ec *ec,
-				   u8 data[GAOKUN_SMART_CHARGE_DATA_SIZE])
+				   const u8 req[GAOKUN_SMART_CHARGE_DATA_SIZE])
 {
 	/* SBCM */
-	u8 req[] = MKREQ(0x02, 0XE3, GAOKUN_SMART_CHARGE_DATA_SIZE);
+	u8 ec_req[] = MKREQ(0x02, SMART_CHARGE_DATA_WRITE,
+			    GAOKUN_SMART_CHARGE_DATA_SIZE);
 
-	if (!are_thresholds_valid(data[2], data[3]))
+	if (!validate_battery_threshold_range(req[2], req[3]))
 		return -EINVAL;
 
-	refill_req(req, data, GAOKUN_SMART_CHARGE_DATA_SIZE);
+	refill_req(ec_req, req, GAOKUN_SMART_CHARGE_DATA_SIZE);
 
-	return gaokun_ec_write(ec, req);
+	return gaokun_ec_write(ec, ec_req);
 }
 EXPORT_SYMBOL_GPL(gaokun_ec_psy_set_smart_charge);
 
-/* -------------------------------------------------------------------------- */
-/* API For UCSI */
+/* Smart charge enable */
 
-int gaokun_ec_ucsi_read(struct gaokun_ec *ec,
-			u8 resp[GAOKUN_UCSI_READ_SIZE])
+/**
+ * gaokun_ec_psy_get_smart_charge_enable - Get smart charge state
+ * @ec: The gaokun_ec structure
+ * @on: The state
+ *
+ * Return: 0 on success or negative error code.
+ */
+int gaokun_ec_psy_get_smart_charge_enable(struct gaokun_ec *ec, bool *on)
 {
-	u8 req[] = MKREQ(0x03, 0xD5, 0);
-	u8 _resp[] = MKRESP(GAOKUN_UCSI_READ_SIZE);
+	/* GBAC */
+	u8 ec_req[] = MKREQ(0x02, SMART_CHARGE_ENABLE_READ, 0);
+	u8 state;
 	int ret;
 
-	ret = gaokun_ec_read(ec, req, sizeof(_resp), _resp);
+	ret = gaokun_ec_read_byte(ec, ec_req, &state);
 	if (ret)
 		return ret;
 
-	extr_resp(resp, _resp, GAOKUN_UCSI_READ_SIZE);
+	*on = !!state;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(gaokun_ec_psy_get_smart_charge_enable);
+
+/**
+ * gaokun_ec_psy_set_smart_charge_enable - Set smart charge state
+ * @ec: The gaokun_ec structure
+ * @on: The state
+ *
+ * Return: 0 on success or negative error code.
+ */
+int gaokun_ec_psy_set_smart_charge_enable(struct gaokun_ec *ec, bool on)
+{
+	/* SBAC */
+	u8 ec_req[] = MKREQ(0x02, SMART_CHARGE_ENABLE_WRITE, 1, on);
+
+	return gaokun_ec_write(ec, ec_req);
+}
+EXPORT_SYMBOL_GPL(gaokun_ec_psy_set_smart_charge_enable);
+
+/* -------------------------------------------------------------------------- */
+/* API for UCSI */
+
+/**
+ * gaokun_ec_ucsi_read - Read UCSI data from EC
+ * @ec: The gaokun_ec structure
+ * @resp: The buffer to store response sequence
+ *
+ * Read CCI and MSGI (used by UCSI subdriver).
+ *
+ * Return: 0 on success or negative error code.
+ */
+int gaokun_ec_ucsi_read(struct gaokun_ec *ec,
+			u8 resp[GAOKUN_UCSI_READ_SIZE])
+{
+	u8 ec_req[] = MKREQ(0x03, UCSI_DATA_READ, 0);
+	u8 ec_resp[] = MKRESP(GAOKUN_UCSI_READ_SIZE);
+	int ret;
+
+	ret = gaokun_ec_read(ec, ec_req, sizeof(ec_resp), ec_resp);
+	if (ret)
+		return ret;
+
+	extr_resp(resp, ec_resp, GAOKUN_UCSI_READ_SIZE);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(gaokun_ec_ucsi_read);
 
+/**
+ * gaokun_ec_ucsi_write - Write UCSI data to EC
+ * @ec: The gaokun_ec structure
+ * @req: The sequence to request
+ *
+ * Write CTRL and MSGO (used by UCSI subdriver).
+ *
+ * Return: 0 on success or negative error code.
+ */
 int gaokun_ec_ucsi_write(struct gaokun_ec *ec,
 			 const u8 req[GAOKUN_UCSI_WRITE_SIZE])
 {
-	u8 _req[] = MKREQ(0x03, 0xD4, GAOKUN_UCSI_WRITE_SIZE);
+	u8 ec_req[] = MKREQ(0x03, UCSI_DATA_WRITE, GAOKUN_UCSI_WRITE_SIZE);
 
+	refill_req(ec_req, req, GAOKUN_UCSI_WRITE_SIZE);
 
-	refill_req(_req, req, GAOKUN_UCSI_WRITE_SIZE);
-
-	return gaokun_ec_write(ec, _req);
+	return gaokun_ec_write(ec, ec_req);
 }
 EXPORT_SYMBOL_GPL(gaokun_ec_ucsi_write);
 
-int gaokun_ec_ucsi_get_reg(struct gaokun_ec *ec, u8 *ureg)
+/**
+ * gaokun_ec_ucsi_get_reg - Get UCSI register from EC
+ * @ec: The gaokun_ec structure
+ * @ureg: The gaokun ucsi register
+ *
+ * Get UCSI register data (used by UCSI subdriver).
+ *
+ * Return: 0 on success or negative error code.
+ */
+int gaokun_ec_ucsi_get_reg(struct gaokun_ec *ec, struct gaokun_ucsi_reg *ureg)
 {
-	u8 req[] = MKREQ(0x03, 0xD3, 0);
-	u8 _resp[] = MKRESP(UCSI_REG_SIZE);
+	u8 ec_req[] = MKREQ(0x03, UCSI_REG_READ, 0);
+	u8 ec_resp[] = MKRESP(UCSI_REG_SIZE);
 	int ret;
 
-	ret = gaokun_ec_read(ec, req, sizeof(_resp), _resp);
+	ret = gaokun_ec_read(ec, ec_req, sizeof(ec_resp), ec_resp);
 	if (ret)
 		return ret;
 
-	extr_resp(ureg, _resp, UCSI_REG_SIZE);
+	extr_resp((u8 *)ureg, ec_resp, UCSI_REG_SIZE);
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(gaokun_ec_ucsi_get_reg);
 
+/**
+ * gaokun_ec_ucsi_pan_ack - Ack pin assignment notifications from EC
+ * @ec: The gaokun_ec structure
+ * @port_id: The port id receiving and handling the notifications
+ *
+ * Ack pin assignment notifications (used by UCSI subdriver).
+ *
+ * Return: 0 on success or negative error code.
+ */
 int gaokun_ec_ucsi_pan_ack(struct gaokun_ec *ec, int port_id)
 {
-	u8 req[] = MKREQ(0x03, 0xD2, 1);
+	u8 ec_req[] = MKREQ(0x03, UCSI_REG_WRITE, 1);
 	u8 data = 1 << port_id;
 
 	if (port_id == GAOKUN_UCSI_NO_PORT_UPDATE)
 		data = 0;
 
-	refill_req(req, &data, 1);
+	refill_req_byte(ec_req, &data);
 
-	return gaokun_ec_write(ec, req);
+	return gaokun_ec_write(ec, ec_req);
 }
 EXPORT_SYMBOL_GPL(gaokun_ec_ucsi_pan_ack);
 
@@ -379,17 +474,17 @@ EXPORT_SYMBOL_GPL(gaokun_ec_ucsi_pan_ack);
 static int gaokun_ec_get_fn_lock(struct gaokun_ec *ec, bool *on)
 {
 	/* GFRS */
-	u8 req[] = MKREQ(0x02, 0x6B, 0);
+	u8 ec_req[] = MKREQ(0x02, EC_FN_LOCK_READ, 0);
 	int ret;
-	u8 val;
+	u8 state;
 
-	ret = gaokun_ec_read_byte(ec, req, &val);
+	ret = gaokun_ec_read_byte(ec, ec_req, &state);
 	if (ret)
 		return ret;
 
-	if (val == EC_FN_LOCK_ON)
+	if (state == EC_FN_LOCK_ON)
 		*on = true;
-	else if (val == EC_FN_LOCK_OFF)
+	else if (state == EC_FN_LOCK_OFF)
 		*on = false;
 	else
 		return -EIO;
@@ -400,17 +495,10 @@ static int gaokun_ec_get_fn_lock(struct gaokun_ec *ec, bool *on)
 static int gaokun_ec_set_fn_lock(struct gaokun_ec *ec, bool on)
 {
 	/* SFRS */
-	u8 req[] = MKREQ(0x02, 0x6C, 1);
-	u8 data;
+	u8 ec_req[] = MKREQ(0x02, EC_FN_LOCK_WRITE, 1,
+			    on ? EC_FN_LOCK_ON : EC_FN_LOCK_OFF);
 
-	if (on)
-		data = EC_FN_LOCK_ON;
-	else
-		data = EC_FN_LOCK_OFF;
-
-	refill_req(req, &data, 1);
-
-	return gaokun_ec_write(ec, req);
+	return gaokun_ec_write(ec, ec_req);
 }
 
 static ssize_t fn_lock_show(struct device *dev,
@@ -454,139 +542,77 @@ static struct attribute *gaokun_ec_attrs[] = {
 };
 ATTRIBUTE_GROUPS(gaokun_ec);
 
+/* -------------------------------------------------------------------------- */
 /* Thermal Zone HwMon */
-/* Range from 0 to 0x2C, partial valid */
-static const u8 temp_reg[20] = {0x05, 0x07, 0x08, 0x0E, 0x0F, 0x12, 0x15, 0x1E,
-				0x1F, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26,
-				0x27, 0x28, 0x29, 0x2A};
 
-static int gaokun_ec_get_temp(struct gaokun_ec *ec, u8 idx, int *temp)
+/* Range from 0 to 0x2C, partially valid */
+static const u8 temp_reg[] = {
+	0x05, 0x07, 0x08, 0x0E, 0x0F, 0x12, 0x15, 0x1E,
+	0x1F, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26,
+	0x27, 0x28, 0x29, 0x2A
+};
+
+static int gaokun_ec_get_temp(struct gaokun_ec *ec, u8 idx, long *temp)
 {
 	/* GTMP */
-	u8 req[] = MKREQ(0x02, 0x61, 1, temp_reg[idx]);
-	u8 resp[] = MKRESP(sizeof(__le16));
-	__le16 tmp;
+	u8 ec_req[] = MKREQ(0x02, EC_TEMP_REG, 1, temp_reg[idx]);
+	u8 ec_resp[] = MKRESP(sizeof(__le16));
+	__le16 *tmp;
 	int ret;
 
-	ret = gaokun_ec_read(ec, req, sizeof(resp), resp);
+	ret = gaokun_ec_read(ec, ec_req, sizeof(ec_resp), ec_resp);
 	if (ret)
 		return ret;
 
-	extr_resp((u8 *)&tmp, resp, sizeof(tmp));
-	*temp = le16_to_cpu(tmp) * 100; /* convert to HwMon's unit */
+	tmp = (__le16 *)extr_resp_shallow(ec_resp);
+	*temp = le16_to_cpu(*tmp) * 100; /* convert to HwMon's unit */
 
 	return 0;
 }
 
-static ssize_t get_ec_tz_temp(struct device *dev,
-			      struct device_attribute *attr,
-			      char *buf)
+static umode_t
+gaokun_ec_hwmon_is_visible(const void *data, enum hwmon_sensor_types type,
+			   u32 attr, int channel)
+{
+	return type == hwmon_temp ? 0444 : 0;
+}
+
+static int
+gaokun_ec_hwmon_read(struct device *dev, enum hwmon_sensor_types type,
+		     u32 attr, int channel, long *val)
 {
 	struct gaokun_ec *ec = dev_get_drvdata(dev);
-	int idx, ret, temp;
 
-	idx = (to_sensor_dev_attr(attr))->index - 1;
-	ret = gaokun_ec_get_temp(ec, idx, &temp);
-	if (ret)
-		return ret;
+	if (type == hwmon_temp)
+		return gaokun_ec_get_temp(ec, channel, val);
 
-	return sysfs_emit(buf, "%d\n", temp);
+	return -EINVAL;
 }
 
-static ssize_t ec_tz_temp_label(struct device *dev,
-				struct device_attribute *attr,
-				char *buf)
-{
-	int idx = (to_sensor_dev_attr(attr))->index - 1;
+static const struct hwmon_ops gaokun_ec_hwmon_ops = {
+	.is_visible = gaokun_ec_hwmon_is_visible,
+	.read = gaokun_ec_hwmon_read,
+};
 
-	return sysfs_emit(buf, "EC Thermal Zone %2d Temperature\n", idx);
-}
+static u32 gaokun_ec_temp_config[] = {
+	[0 ... ARRAY_SIZE(temp_reg) - 1] = HWMON_T_INPUT,
+	0
+};
 
-static SENSOR_DEVICE_ATTR(temp1_input, 0444, get_ec_tz_temp, NULL, 1);
-static SENSOR_DEVICE_ATTR(temp1_label, 0444, ec_tz_temp_label, NULL, 1);
-static SENSOR_DEVICE_ATTR(temp2_input, 0444, get_ec_tz_temp, NULL, 2);
-static SENSOR_DEVICE_ATTR(temp2_label, 0444, ec_tz_temp_label, NULL, 2);
-static SENSOR_DEVICE_ATTR(temp3_input, 0444, get_ec_tz_temp, NULL, 3);
-static SENSOR_DEVICE_ATTR(temp3_label, 0444, ec_tz_temp_label, NULL, 3);
-static SENSOR_DEVICE_ATTR(temp4_input, 0444, get_ec_tz_temp, NULL, 4);
-static SENSOR_DEVICE_ATTR(temp4_label, 0444, ec_tz_temp_label, NULL, 4);
-static SENSOR_DEVICE_ATTR(temp5_input, 0444, get_ec_tz_temp, NULL, 5);
-static SENSOR_DEVICE_ATTR(temp5_label, 0444, ec_tz_temp_label, NULL, 5);
-static SENSOR_DEVICE_ATTR(temp6_input, 0444, get_ec_tz_temp, NULL, 6);
-static SENSOR_DEVICE_ATTR(temp6_label, 0444, ec_tz_temp_label, NULL, 6);
-static SENSOR_DEVICE_ATTR(temp7_input, 0444, get_ec_tz_temp, NULL, 7);
-static SENSOR_DEVICE_ATTR(temp7_label, 0444, ec_tz_temp_label, NULL, 7);
-static SENSOR_DEVICE_ATTR(temp8_input, 0444, get_ec_tz_temp, NULL, 8);
-static SENSOR_DEVICE_ATTR(temp8_label, 0444, ec_tz_temp_label, NULL, 8);
-static SENSOR_DEVICE_ATTR(temp9_input, 0444, get_ec_tz_temp, NULL, 9);
-static SENSOR_DEVICE_ATTR(temp9_label, 0444, ec_tz_temp_label, NULL, 9);
-static SENSOR_DEVICE_ATTR(temp10_input, 0444, get_ec_tz_temp, NULL, 10);
-static SENSOR_DEVICE_ATTR(temp10_label, 0444, ec_tz_temp_label, NULL, 10);
-static SENSOR_DEVICE_ATTR(temp11_input, 0444, get_ec_tz_temp, NULL, 11);
-static SENSOR_DEVICE_ATTR(temp11_label, 0444, ec_tz_temp_label, NULL, 11);
-static SENSOR_DEVICE_ATTR(temp12_input, 0444, get_ec_tz_temp, NULL, 12);
-static SENSOR_DEVICE_ATTR(temp12_label, 0444, ec_tz_temp_label, NULL, 12);
-static SENSOR_DEVICE_ATTR(temp13_input, 0444, get_ec_tz_temp, NULL, 13);
-static SENSOR_DEVICE_ATTR(temp13_label, 0444, ec_tz_temp_label, NULL, 13);
-static SENSOR_DEVICE_ATTR(temp14_input, 0444, get_ec_tz_temp, NULL, 14);
-static SENSOR_DEVICE_ATTR(temp14_label, 0444, ec_tz_temp_label, NULL, 14);
-static SENSOR_DEVICE_ATTR(temp15_input, 0444, get_ec_tz_temp, NULL, 15);
-static SENSOR_DEVICE_ATTR(temp15_label, 0444, ec_tz_temp_label, NULL, 15);
-static SENSOR_DEVICE_ATTR(temp16_input, 0444, get_ec_tz_temp, NULL, 16);
-static SENSOR_DEVICE_ATTR(temp16_label, 0444, ec_tz_temp_label, NULL, 16);
-static SENSOR_DEVICE_ATTR(temp17_input, 0444, get_ec_tz_temp, NULL, 17);
-static SENSOR_DEVICE_ATTR(temp17_label, 0444, ec_tz_temp_label, NULL, 17);
-static SENSOR_DEVICE_ATTR(temp18_input, 0444, get_ec_tz_temp, NULL, 18);
-static SENSOR_DEVICE_ATTR(temp18_label, 0444, ec_tz_temp_label, NULL, 18);
-static SENSOR_DEVICE_ATTR(temp19_input, 0444, get_ec_tz_temp, NULL, 19);
-static SENSOR_DEVICE_ATTR(temp19_label, 0444, ec_tz_temp_label, NULL, 19);
-static SENSOR_DEVICE_ATTR(temp20_input, 0444, get_ec_tz_temp, NULL, 20);
-static SENSOR_DEVICE_ATTR(temp20_label, 0444, ec_tz_temp_label, NULL, 20);
+static const struct hwmon_channel_info gaokun_ec_temp = {
+	.type = hwmon_temp,
+	.config = gaokun_ec_temp_config,
+};
 
-static struct attribute *gaokun_ec_hwmon_attrs[] = {
-	&sensor_dev_attr_temp1_input.dev_attr.attr,
-	&sensor_dev_attr_temp1_label.dev_attr.attr,
-	&sensor_dev_attr_temp2_input.dev_attr.attr,
-	&sensor_dev_attr_temp2_label.dev_attr.attr,
-	&sensor_dev_attr_temp3_input.dev_attr.attr,
-	&sensor_dev_attr_temp3_label.dev_attr.attr,
-	&sensor_dev_attr_temp4_input.dev_attr.attr,
-	&sensor_dev_attr_temp4_label.dev_attr.attr,
-	&sensor_dev_attr_temp5_input.dev_attr.attr,
-	&sensor_dev_attr_temp5_label.dev_attr.attr,
-	&sensor_dev_attr_temp6_input.dev_attr.attr,
-	&sensor_dev_attr_temp6_label.dev_attr.attr,
-	&sensor_dev_attr_temp7_input.dev_attr.attr,
-	&sensor_dev_attr_temp7_label.dev_attr.attr,
-	&sensor_dev_attr_temp8_input.dev_attr.attr,
-	&sensor_dev_attr_temp8_label.dev_attr.attr,
-	&sensor_dev_attr_temp9_input.dev_attr.attr,
-	&sensor_dev_attr_temp9_label.dev_attr.attr,
-	&sensor_dev_attr_temp10_input.dev_attr.attr,
-	&sensor_dev_attr_temp10_label.dev_attr.attr,
-	&sensor_dev_attr_temp11_input.dev_attr.attr,
-	&sensor_dev_attr_temp11_label.dev_attr.attr,
-	&sensor_dev_attr_temp12_input.dev_attr.attr,
-	&sensor_dev_attr_temp12_label.dev_attr.attr,
-	&sensor_dev_attr_temp13_input.dev_attr.attr,
-	&sensor_dev_attr_temp13_label.dev_attr.attr,
-	&sensor_dev_attr_temp14_input.dev_attr.attr,
-	&sensor_dev_attr_temp14_label.dev_attr.attr,
-	&sensor_dev_attr_temp15_input.dev_attr.attr,
-	&sensor_dev_attr_temp15_label.dev_attr.attr,
-	&sensor_dev_attr_temp16_input.dev_attr.attr,
-	&sensor_dev_attr_temp16_label.dev_attr.attr,
-	&sensor_dev_attr_temp17_input.dev_attr.attr,
-	&sensor_dev_attr_temp17_label.dev_attr.attr,
-	&sensor_dev_attr_temp18_input.dev_attr.attr,
-	&sensor_dev_attr_temp18_label.dev_attr.attr,
-	&sensor_dev_attr_temp19_input.dev_attr.attr,
-	&sensor_dev_attr_temp19_label.dev_attr.attr,
-	&sensor_dev_attr_temp20_input.dev_attr.attr,
-	&sensor_dev_attr_temp20_label.dev_attr.attr,
+static const struct hwmon_channel_info * const gaokun_ec_hwmon_info[] = {
+	&gaokun_ec_temp,
 	NULL
 };
-ATTRIBUTE_GROUPS(gaokun_ec_hwmon);
+
+static const struct hwmon_chip_info gaokun_ec_hwmon_chip_info = {
+	.ops = &gaokun_ec_hwmon_ops,
+	.info = gaokun_ec_hwmon_info,
+};
 
 /* -------------------------------------------------------------------------- */
 /* Modern Standby */
@@ -594,14 +620,13 @@ ATTRIBUTE_GROUPS(gaokun_ec_hwmon);
 static int gaokun_ec_suspend(struct device *dev)
 {
 	struct gaokun_ec *ec = dev_get_drvdata(dev);
-	u8 req[] = MKREQ(0x02, 0xB2, 1, 0xDB);
+	u8 ec_req[] = MKREQ(0x02, EC_STANDBY_REG, 1, EC_STANDBY_ENTER);
 	int ret;
 
 	if (ec->suspended)
 		return 0;
 
-	ret = gaokun_ec_write(ec, req);
-
+	ret = gaokun_ec_write(ec, ec_req);
 	if (ret)
 		return ret;
 
@@ -613,7 +638,7 @@ static int gaokun_ec_suspend(struct device *dev)
 static int gaokun_ec_resume(struct device *dev)
 {
 	struct gaokun_ec *ec = dev_get_drvdata(dev);
-	u8 req[] = MKREQ(0x02, 0xB2, 1, 0xEB);
+	u8 ec_req[] = MKREQ(0x02, EC_STANDBY_REG, 1, EC_STANDBY_EXIT);
 	int ret;
 	int i;
 
@@ -621,7 +646,7 @@ static int gaokun_ec_resume(struct device *dev)
 		return 0;
 
 	for (i = 0; i < 3; ++i) {
-		ret = gaokun_ec_write(ec, req);
+		ret = gaokun_ec_write(ec, ec_req);
 		if (ret == 0)
 			break;
 
@@ -687,11 +712,11 @@ static int gaokun_aux_init(struct device *parent, const char *name,
 static irqreturn_t gaokun_ec_irq_handler(int irq, void *data)
 {
 	struct gaokun_ec *ec = data;
-	u8 req[] = MKREQ(EC_EVENT, EC_QUERY, 0);
+	u8 ec_req[] = MKREQ(EC_EVENT, EC_QUERY, 0);
 	u8 status, id;
 	int ret;
 
-	ret = gaokun_ec_read_byte(ec, req, &id);
+	ret = gaokun_ec_read_byte(ec, ec_req, &id);
 	if (ret)
 		return IRQ_HANDLED;
 
@@ -701,7 +726,7 @@ static irqreturn_t gaokun_ec_irq_handler(int irq, void *data)
 
 	case EC_EVENT_LID:
 		gaokun_ec_psy_read_byte(ec, EC_LID_STATE, &status);
-		status = EC_LID_OPEN & status;
+		status &= EC_LID_OPEN;
 		input_report_switch(ec->idev, SW_LID, !status);
 		input_sync(ec->idev);
 		break;
@@ -723,7 +748,10 @@ static int gaokun_ec_probe(struct i2c_client *client)
 	if (!ec)
 		return -ENOMEM;
 
-	mutex_init(&ec->lock);
+	ret = devm_mutex_init(dev, &ec->lock);
+	if (ret)
+		return ret;
+
 	ec->client = client;
 	i2c_set_clientdata(client, ec);
 	BLOCKING_INIT_NOTIFIER_HEAD(&ec->notifier_list);
@@ -741,11 +769,11 @@ static int gaokun_ec_probe(struct i2c_client *client)
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to register input device\n");
 
-	ret = gaokun_aux_init(dev, "psy", ec);
+	ret = gaokun_aux_init(dev, GAOKUN_DEV_PSY, ec);
 	if (ret)
 		return ret;
 
-	ret = gaokun_aux_init(dev, "ucsi", ec);
+	ret = gaokun_aux_init(dev, GAOKUN_DEV_UCSI, ec);
 	if (ret)
 		return ret;
 
@@ -753,22 +781,15 @@ static int gaokun_ec_probe(struct i2c_client *client)
 					gaokun_ec_irq_handler, IRQF_ONESHOT,
 					dev_name(dev), ec);
 	if (ret)
-		return dev_err_probe(dev, ret, "Failed to request irq\n");
+		return dev_err_probe(dev, ret, "Failed to request IRQ\n");
 
-	ec->hwmon_dev = hwmon_device_register_with_groups(dev, "gaokun_ec_hwmon",
-							  ec, gaokun_ec_hwmon_groups);
-	if (IS_ERR(ec->hwmon_dev)) {
-		dev_err(dev, "Failed to register hwmon device\n");
-		return PTR_ERR(ec->hwmon_dev);
-	}
+	ec->hwmon_dev = devm_hwmon_device_register_with_info(dev, "gaokun_ec_hwmon",
+							     ec, &gaokun_ec_hwmon_chip_info, NULL);
+	if (IS_ERR(ec->hwmon_dev))
+		return dev_err_probe(dev, PTR_ERR(ec->hwmon_dev),
+				     "Failed to register hwmon device\n");
 
 	return 0;
-}
-
-static void gaokun_ec_remove(struct i2c_client *client)
-{
-	struct gaokun_ec *ec = i2c_get_clientdata(client);
-	hwmon_device_unregister(ec->hwmon_dev);
 }
 
 static const struct i2c_device_id gaokun_ec_id[] = {
@@ -795,7 +816,6 @@ static struct i2c_driver gaokun_ec_driver = {
 		.dev_groups = gaokun_ec_groups,
 	},
 	.probe = gaokun_ec_probe,
-	.remove = gaokun_ec_remove,
 	.id_table = gaokun_ec_id,
 };
 module_i2c_driver(gaokun_ec_driver);

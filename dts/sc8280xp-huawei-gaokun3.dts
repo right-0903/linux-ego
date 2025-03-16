@@ -20,6 +20,7 @@
 
 #include "sc8280xp.dtsi"
 #include "sc8280xp-pmics.dtsi"
+#include "sc8280xp-huawei-gaokun3-camera.dtsi"
 
 / {
 	chassis-type = "tablet";

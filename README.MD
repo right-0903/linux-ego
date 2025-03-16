@@ -14,15 +14,15 @@ This project mainly refers to the following projects:
 ***The time span is very long. If I forget someone's work, please remind me, if I recall something, I will add it.***
 
 ## Upstream Progress
-Initial dt support will land on 6.14, currently, they are in qcom `-next` tree, see [here](https://git.kernel.org/pub/scm/linux/kernel/git/qcom/linux.git/log/?h=for-next&qt=grep&q=Pengyu+Luo).
+Initial dt support will land on 6.14.
 
-Initial EC support will land on 6.15, currently, they are in pdx `-next` tree, see [here](https://web.git.kernel.org/pub/scm/linux/kernel/git/pdx86/platform-drivers-x86.git/log/?h=for-next&qt=author&q=Pengyu+Luo).
+Initial EC support will land on 6.15.
 
 ## Disclaimer
 I am just an amateur, a Linux noob, not educated with formal CS courses. You should never believe what I say below, except this sentence. I am not responsible for your actions; you do this all at your own risk!
 
 ## Device Tree
-The DT works with steev's latest branch. You should extract the firmwares required by DT, and get them well placed, you can find them in the Windows OS `DriverStore` directory. (Update: AUR [here](https://aur.archlinux.org/packages/linux-firmware-gaokun3))
+The DT works with steev's latest branch. You should extract the firmwares required by the DT, and get them well placed, you can find them in the Windows OS `DriverStore` directory. (Update: AUR [here](https://aur.archlinux.org/packages/linux-firmware-gaokun3))
 
 ## Kernel
 Use steev or jhovold one with default config and `simplefb` enabled. (Update: AUR [here](https://aur.archlinux.org/pkgbase/linux-gaokun3))
@@ -46,19 +46,19 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 | ------- | ------ | ---- |
 | Audio  | works | see [below](#audio) |
 | Backlight | x | DSI DCS-based backlight control, control method had been figured out. There is an I2C baclkight IC, power supply and how to enable keep unknown |
-| Battery | works | some attributes are hidden, like cycle count is also supported |
+| Battery | works | For hidden attributes, check `/sys/class/power_supply/gaokun-ec-battery/`  |
 | Bluetooth | works | RF performance is incredible when you have set calibration data for wifi(they are both on the chip of WCN6855) |
 | Camera | x | WIP |
 | CPUfreq | works | |
-| Display | x | [There](https://linaro.github.io/msm/soc/sc8280xp) is no DSI driver for SC8280XP now. I added some patches to [*patch sets*](./patch%20sets/WIP/DSI/) folder, but still not work |
+| Display | x | No DSI, panel, backlight drivers |
 | Display sensors | x | for rotation detect, light detect, etc. Added slpi nodes, but how can we access it? |
 | EC | works | Battery and adapter status, wmi, ucsi,maybe modern standby |
-| EFI variables | works | with the [patch](./patch%20sets/fix/0001-firmware-qcom-uefisecapp-add-Huawei-Matebook-E-GO.patch). |
+| EFI variables | works | |
 | Fingerprint reader | x | mbn firmwares related which means that is complicated. x13s one was introduce from [commit](https://github.com/torvalds/linux/commit/d280fe309b88b337a9b26f96b7a9d9aa6d6c3a0f). |
 | GPU | works | Freedreno 690([FD690](./feature_spoliers/gpu.png)), remember to install `vulkan-freedreno` to enable vulkan support. |
 | Hibernation | x | |
 | Keyboard & Touchpad | works | |
-| Keyboard fn keys | partial | brightness, volume adjustment, screen lock
+| Keyboard fn keys | partial | Assistant key(between `F6` and `F7`), WIFI key(`F9`), and Manager key(`F10`), they don't work. |
 | Lid | x | basically works, revaluate it until dsi panel works |
 | NVMe SSD | works | |
 | PCIe (x4) | works | |
@@ -66,19 +66,19 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 | Remoteproc | works | adsp, cdsp, sdsp(sensors related, see [below](./#SLPI)) |
 | RTC | works | |
 | Suspend | works | s2idle |
-| Thermal sensors | works | partial I think |
+| Thermal sensors | works |  |
 | Touchscreen over i2c | partial | weird behavior, I think NHLOS use this, such as BIOS configuration |
 | Touchscreen over spi | x | Anyways, it uses spi on Windows. Driver reference[1](https://github.com/MiCode/Xiaomi_Kernel_OpenSource/tree/dagu-s-oss/drivers/input/touchscreen/hxchipset), [2](https://lore.kernel.org/all/TY0PR06MB5611B4E88D79DE738241F5639E0F2@TY0PR06MB5611.apcprd06.prod.outlook.com), [3](https://lore.kernel.org/all/20231017091900.801989-1-tylor_yang@himax.corp-partner.google.com), it is a suffering to port it. |
 | TPM | x | |
 | USB | works | |
 | USB-PD | works | With UCSI EC driver, charging power is up to 45W compared to 23w before, can be used as sink and source |
-| USB-C DisplayPort Alt Mode | works | initial support, wait for upstream to fix Qualcomm's quirks |
+| USB-C DisplayPort Alt Mode | works |  |
 | Video acceleration | works | see [below](#Video-acceleration) |
 | Virtualisation | x | |
 | Volumn keys | works | |
 | Watchdog | partial | One in sc8280xp works, another in EC not(acpi method identifiers have not been figured out yet) |
 | Wi-Fi | works | see [below](#Wi-Fi) |
-| WMI related features| partial | charging control, FN lock, smart charge, thermal sensors and so on(undiscoverd things due to its meaning is unknown) |
+| WMI related features| partial | charging control, FN lock, smart charge, thermal sensors and so on |
 
 ---
 
@@ -87,7 +87,7 @@ With kernel version `6.12` by [steev](https://github.com/steev/linux/). (I write
 > [!CAUTION]
 > Recently, UCSI subsystem is buggy for this tablet. Chances are that failed to boot(auto reboot). Only plug into Type-C ports after booting up.
 
-Support 2-lane only for now, Johan mentioned [this](https://github.com/jhovold/linux/wiki/X13s#USB) also, but we don't require insert orientation.
+Support 2-lane only for now(only half of clocks are enabled), Johan mentioned [this](https://github.com/jhovold/linux/wiki/X13s#USB) also, but we don't require insert orientation.
 
 In default, the bandwidth of per lane is limited to 5.4Gbps(HBR2, DisplayPort 1.2 or later). If you want to a higher limit, set this.
 
@@ -125,41 +125,36 @@ Recently, use the X13s' profile. \
 
 ## Battery
 ### Charging control
-`echo 'start stop' /sys/devices/platform/gaokun-wmi/charge_control_thresholds`
 
-Clarification from [TLP](https://linrunner.de/tlp/faq/battery.html).
-> Start charge threshold (START_CHARGE_THRESH_BATx): battery charge level below which charging will begin when connecting the charger.
+`echo '72' /sys/class/power_supply/gaokun-ec-battery/smart_charge_delay`
 
-> Stop charge threshold (STOP_CHARGE_TRESH_BATx): battery charge level above which charging will stop while the charger is connected.
+`echo '40' /sys/class/power_supply/gaokun-ec-battery/charge_control_start_threshold`
 
-The values would not be saved after you shut down and plugged out, the default values are set to `0 0` at next boot, you can use `udev` to set the default values like `55 60`,
-```
-ACTION=="add", SUBSYSTEM=="platform", KERNEL=="gaokun-wmi", ATTR{charge_control_thresholds}="55 60"
-```
+`echo '70' /sys/class/power_supply/gaokun-ec-battery/charge_control_end_threshold`
 
-### Smart charging
-Explanation, refer to Huawei support [page](https://consumer.huawei.com/en/support/content/en-us15783714/) \
-`cat /sys/devices/platform/gaokun-wmi/smart_charge` \
-`cat /sys/devices/platform/gaokun-wmi/smart_charge_param`
+`echo '0/1' /sys/class/power_supply/gaokun-ec-battery/battery_adaptive_charge`
+
+That means plugged in after 72 hours, charging level is limited to 70%.
 
 > When the laptop is just connected to a power adapter, it starts charging until the battery level reaches 70% if the battery level is lower than 70%, or the battery level does not increase if the battery level is 70% or higher. This is normal.
 
 > When the power adapter is always connected, the laptop starts charging if its battery level is lower than 40%, and stops charging when the battery level reaches 70%.
 
-`smart_charge`: default are 4 72 40 70, correspond to charging mode, delay, start, stop, after 72 hours, charging level is limited to 70%.
+Further explanation, check Huawei support [page](https://consumer.huawei.com/en/support/content/en-us15783714/)
 
-`smart_charge_param`: enable or not? Recently, If it is 1, then charge power might be up to 23W.(unsure)
-
-If you set charging control on Windows, like 90%, then `smart_charge` would be `1 72 85 90`, `charge_control_thresholds` would be reset to `85 90` also.
+The values would not be saved after you shut down and plugged out, you can use `udev` to set the default values, like
+```
+ACTION=="add", SUBSYSTEM=="power_supply", KERNEL=="gaokun-ec-battery", ATTR{smart_charge_delay}="0", ATTRS{charge_control_start_threshold}="45", ATTRS{charge_control_end_threshold}="50", ATTRS{battery_adaptive_charge}="1"
+```
 
 ## Camera
-* front camera sensor: hi846(cci2, gpio12: cci_i2c_sda, gpio13: cci_i2c_scl)
-* rear camera sensor: s5k3l6(cci1, gpio10: cci_i2c_sda, gpio11: cci_i2c_scl)
+* front camera sensor: hi846(cci2, gpio12: cci_i2c_sda, gpio13: cci_i2c_scl, CAMCC_MCLK3_CLK: 24MHz, gpio17, reset: gpio15)
+* rear camera sensor: s5k3l6(cci1, gpio10: cci_i2c_sda, gpio11: cci_i2c_scl, CAMCC_MCLK4_CLK: 24MHz, gpio6, reset: gpio7)
 
-After hacking windows driver, they are exactly here, but I can't detect slaves with `i2cdetect`.
+The rear sensor can't be detected.
 
 ## Display
-There are too many unknowns(dsi support, dual dsi with video mode dsc, gpio, power supply, backlight, etc), no actual progress can be confirmed, I have uploaded all my progress, if you have an idea, then go ahead.
+There are too many unknowns(dsi support, dual dsi with video mode dsc, gpio(0,1,8,20,24,52,53,...), power supply, backlight, etc), no actual progress can be confirmed, I have uploaded all my progress, if you have ideas, then go ahead.
 
 **Addition: Some patches are first proposed by [matalama80td3l](https://github.com/matalama80td3l) at [here](https://gitlab.freedesktop.org/drm/msm/-/issues/56). I verified and completed them.**
 
@@ -184,14 +179,22 @@ Some issues:
 During the probe of panel, after we sent initial code to dsi(prepare), then dpu would send video stream to dsi, if we created a backlight device previously, KMS would turn on it for us(enable), but we would get `msm_dsi ae94000.dsi: [drm:dsi_cmds2buf_tx [msm]] *ERROR* wait for video done timed out`, because backlight ic wouldn't respond.
 
 ## FN Lock
-`echo 0/1 > /sys/devices/platform/gaokun-wmi/fn_lock_state` \
+`echo 0/1 > /sys/devices/platform/soc@0/ac0000.geniqup/a9c000.i2c/i2c-15/15-0038/fn_lock` \
 `0`: disable the fn key(hotkey first, such as press `F1` to decrease brightness) \
 `1`: enable the fn key(function key first), you can only trigger hotkey with `Fn + F1-12` \
 BTW, you can press `Fn` key(light on) to reverse it temporarily.
 
 ## Thermal Sensors from EC
 I don't know these sensors for which devices, but you can read them \
-`cat /sys/devices/platform/gaokun-wmi/temperature`
+`sensors`
+```
+gaokun_ec_hwmon-i2c-15-38
+Adapter: Geni-I2C
+temp1:        +47.4°C
+...
+temp20:       +25.9°C
+```
+
 
 ## SLPI
 SLPI(Sensor Low Power Island), [more details](https://lore.kernel.org/linux-devicetree/20230406173148.28309-1-me@dylanvanassche.be/).
@@ -237,24 +240,3 @@ regenerate it,
 ```
 ./ath11k-bdencoder -c board-2.json
 ```
-
----
-
-## Todo list
-1. [x] ~refactor ECCD implementation to avoid data inconsistency(local repo finished, replacement work still remains)~ (New paln: try to add an abstracion layer, but the related dsdt implementation is ..., huawei you sucks)
-1. [x] refactor UCSI part code
-1. [x] add a sysfs to tweak EC
-1. [x] add the altmode part code to UCSI
-1. [ ] fix Qualcomm's quirks
-
----
-
-Some people have asked me for an early access. Now I explain here.
-
-Remote repo is far behind local repo due to stability, and my local repo is quite different. \
-Why don't you create another branch for it? No, if I open it, I should clarif my intentions, I am tired of constant maintenance, I don't like commit every piece of modification, because I start over again when my new ideas don't work, I will most likely delete all I have written. That is time-wasting to keep track those things. Every time I work on one part only, I can maintain context in my brain, until things are settled, I will update my local repo. After some tests, I will plan to update remote repo.
-
-About the ETA of any features, I promise nothing. And, as an amateur, I have my own life, my coding time is flexible.
-
-## Help wanted
-I am occupied with real life things, I spend much free time on it, if someone can help me test features, that will be awesome. Also, as I am an amateur, I am happy to receive suggestions from coding, ACPI/DSDT/SSDT reversing, working mechanism of DSI panel, etc.

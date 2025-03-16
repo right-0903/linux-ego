@@ -16,11 +16,9 @@
 #include <linux/jiffies.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
-// #include <linux/platform_data/huawei-gaokun-ec.h>
+#include "huawei-gaokun-ec.h"
 #include <linux/power_supply.h>
 #include <linux/sprintf.h>
-
-#include "huawei-gaokun-ec.h"
 
 /* -------------------------------------------------------------------------- */
 /* String Data Reg */
@@ -75,9 +73,17 @@
 /* EVENT B1 A0 A1 repeat about every 1s 2s 3s respectively */
 
 /* ACPI _BIX field, Min sampling time, the duration between two _BST */
-#define CACHE_TIME		3000 /* cache time in milliseconds */
+#define CACHE_TIME		2000 /* cache time in milliseconds */
 
 #define MILLI_TO_MICRO		1000
+
+#define SMART_CHARGE_MODE	0
+#define SMART_CHARGE_DELAY	1
+#define SMART_CHARGE_START	2
+#define SMART_CHARGE_END	3
+
+#define NO_DELAY_MODE	1
+#define DELAY_MODE	4
 
 struct gaokun_psy_bat_status {
 	__le16 percentage_now;	/* 0x90 */
@@ -152,7 +158,9 @@ static int gaokun_psy_get_adp_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = ecbat->online;
 		break;
-
+	case POWER_SUPPLY_PROP_USB_TYPE:
+		val->intval = POWER_SUPPLY_USB_TYPE_C;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -162,11 +170,13 @@ static int gaokun_psy_get_adp_property(struct power_supply *psy,
 
 static enum power_supply_property gaokun_psy_adp_props[] = {
 	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_USB_TYPE,
 };
 
 static const struct power_supply_desc gaokun_psy_adp_desc = {
 	.name		= "gaokun-ec-adapter",
-	.type		= POWER_SUPPLY_TYPE_USB_TYPE_C,
+	.type		= POWER_SUPPLY_TYPE_USB,
+	.usb_types	= BIT(POWER_SUPPLY_USB_TYPE_C),
 	.get_property	= gaokun_psy_get_adp_property,
 	.properties	= gaokun_psy_adp_props,
 	.num_properties	= ARRAY_SIZE(gaokun_psy_adp_props),
@@ -269,6 +279,8 @@ static int gaokun_psy_get_bat_property(struct power_supply *psy,
 				       union power_supply_propval *val)
 {
 	struct gaokun_psy *ecbat = power_supply_get_drvdata(psy);
+	u8 buf[GAOKUN_SMART_CHARGE_DATA_SIZE];
+	int ret;
 
 	if (gaokun_psy_bat_present(ecbat))
 		gaokun_psy_get_bat_status(ecbat);
@@ -316,6 +328,18 @@ static int gaokun_psy_get_bat_property(struct power_supply *psy,
 		val->intval = le16_to_cpu(ecbat->status.capacity_now) * MILLI_TO_MICRO;
 		break;
 
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_START_THRESHOLD:
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_END_THRESHOLD:
+		ret = gaokun_ec_psy_get_smart_charge(ecbat->ec, buf);
+		if (ret)
+			return ret;
+
+		if (psp == POWER_SUPPLY_PROP_CHARGE_CONTROL_START_THRESHOLD)
+			val->intval = buf[SMART_CHARGE_START];
+		else
+			val->intval = buf[SMART_CHARGE_END];
+		break;
+
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = le16_to_cpu(ecbat->status.percentage_now);
 		break;
@@ -335,7 +359,49 @@ static int gaokun_psy_get_bat_property(struct power_supply *psy,
 	default:
 		return -EINVAL;
 	}
+
 	return 0;
+}
+
+static int gaokun_psy_set_bat_property(struct power_supply *psy,
+				       enum power_supply_property psp,
+				       const union power_supply_propval *val)
+{
+	struct gaokun_psy *ecbat = power_supply_get_drvdata(psy);
+	u8 buf[GAOKUN_SMART_CHARGE_DATA_SIZE];
+	int ret;
+
+	if (!gaokun_psy_bat_present(ecbat))
+		return -ENODEV;
+
+	ret = gaokun_ec_psy_get_smart_charge(ecbat->ec, buf);
+	if (ret)
+		return ret;
+
+	switch (psp) {
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_START_THRESHOLD:
+		buf[SMART_CHARGE_START] = val->intval;
+		if (buf[SMART_CHARGE_START] > buf[SMART_CHARGE_END])
+			buf[SMART_CHARGE_END] = buf[SMART_CHARGE_START] + 1;
+		return gaokun_ec_psy_set_smart_charge(ecbat->ec, buf);
+
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_END_THRESHOLD:
+		buf[SMART_CHARGE_END] = val->intval;
+		if (buf[SMART_CHARGE_END] < buf[SMART_CHARGE_START])
+			buf[SMART_CHARGE_START] = buf[SMART_CHARGE_END] - 1;
+		return gaokun_ec_psy_set_smart_charge(ecbat->ec, buf);
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int gaokun_psy_is_bat_property_writeable(struct power_supply *psy,
+						enum power_supply_property psp)
+{
+	return psp == POWER_SUPPLY_PROP_CHARGE_CONTROL_START_THRESHOLD ||
+	       psp == POWER_SUPPLY_PROP_CHARGE_CONTROL_END_THRESHOLD;
 }
 
 static enum power_supply_property gaokun_psy_bat_props[] = {
@@ -349,6 +415,8 @@ static enum power_supply_property gaokun_psy_bat_props[] = {
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CHARGE_NOW,
+	POWER_SUPPLY_PROP_CHARGE_CONTROL_START_THRESHOLD,
+	POWER_SUPPLY_PROP_CHARGE_CONTROL_END_THRESHOLD,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_MODEL_NAME,
 	POWER_SUPPLY_PROP_MANUFACTURER,
@@ -356,67 +424,30 @@ static enum power_supply_property gaokun_psy_bat_props[] = {
 };
 
 static const struct power_supply_desc gaokun_psy_bat_desc = {
-	.name		= "gaokun-ec-battery",
-	.type		= POWER_SUPPLY_TYPE_BATTERY,
-	.get_property	= gaokun_psy_get_bat_property,
-	.properties	= gaokun_psy_bat_props,
-	.num_properties	= ARRAY_SIZE(gaokun_psy_bat_props),
+	.name			= "gaokun-ec-battery",
+	.type			= POWER_SUPPLY_TYPE_BATTERY,
+	.get_property		= gaokun_psy_get_bat_property,
+	.set_property		= gaokun_psy_set_bat_property,
+	.property_is_writeable	= gaokun_psy_is_bat_property_writeable,
+	.properties		= gaokun_psy_bat_props,
+	.num_properties		= ARRAY_SIZE(gaokun_psy_bat_props),
 };
 
 /* -------------------------------------------------------------------------- */
 /* Sysfs */
 
-/* Battery charging threshold */
-enum gaokun_psy_threshold_ind {
-	START	= 1,
-	END	= 2,
-};
+/*
+ * Note that, HUAWEI calls them SBAC/GBAC and SBCM/GBCM in DSDT, they are likely
+ * Set/Get Battery Adaptive Charging and Set/Get Battery Charging Mode.
+ */
 
-static ssize_t charge_control_thresholds_show(struct device *dev,
-					      struct device_attribute *attr,
-					      char *buf)
+/* battery adaptive charge */
+static ssize_t battery_adaptive_charge_show(struct device *dev,
+					    struct device_attribute *attr,
+					    char *buf)
 {
-	int ret;
-	u8 start, end;
-	struct gaokun_psy *ecbat = dev_get_drvdata(dev);
-
-	ret = gaokun_ec_psy_get_threshold(ecbat->ec, &start, START);
-	if (ret)
-		return ret;
-
-	ret = gaokun_ec_psy_get_threshold(ecbat->ec, &end, END);
-	if (ret)
-		return ret;
-
-	return sysfs_emit(buf, "%d %d\n", start, end);
-}
-
-static ssize_t charge_control_thresholds_store(struct device *dev,
-					       struct device_attribute *attr,
-					       const char *buf, size_t size)
-{
-	int ret;
-	u8 start, end;
-	struct gaokun_psy *ecbat = dev_get_drvdata(dev);
-
-	if (sscanf(buf, "%hhd %hhd", &start, &end) != 2)
-		return -EINVAL;
-
-	ret = gaokun_ec_psy_set_threshold(ecbat->ec, start, end);
-	if (ret)
-		return ret;
-
-	return size;
-}
-
-static DEVICE_ATTR_RW(charge_control_thresholds);
-
-/* Smart charge enable */
-static ssize_t smart_charge_enable_show(struct device *dev,
-				       struct device_attribute *attr,
-				       char *buf)
-{
-	struct gaokun_psy *ecbat = dev_get_drvdata(dev);
+	struct power_supply *psy = to_power_supply(dev);
+	struct gaokun_psy *ecbat = power_supply_get_drvdata(psy);
 	int ret;
 	bool on;
 
@@ -427,11 +458,12 @@ static ssize_t smart_charge_enable_show(struct device *dev,
 	return sysfs_emit(buf, "%d\n", on);
 }
 
-static ssize_t smart_charge_enable_store(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t size)
+static ssize_t battery_adaptive_charge_store(struct device *dev,
+					     struct device_attribute *attr,
+					     const char *buf, size_t size)
 {
-	struct gaokun_psy *ecbat = dev_get_drvdata(dev);
+	struct power_supply *psy = to_power_supply(dev);
+	struct gaokun_psy *ecbat = power_supply_get_drvdata(psy);
 	int ret;
 	bool on;
 
@@ -445,14 +477,32 @@ static ssize_t smart_charge_enable_store(struct device *dev,
 	return size;
 }
 
-static DEVICE_ATTR_RW(smart_charge_enable);
+static DEVICE_ATTR_RW(battery_adaptive_charge);
+
+static inline int get_charge_delay(u8 buf[GAOKUN_SMART_CHARGE_DATA_SIZE])
+{
+	return buf[SMART_CHARGE_MODE] == NO_DELAY_MODE ? 0 : buf[SMART_CHARGE_DELAY];
+}
+
+static inline void
+set_charge_delay(u8 buf[GAOKUN_SMART_CHARGE_DATA_SIZE], u8 delay)
+{
+	if (delay) {
+		buf[SMART_CHARGE_DELAY] = delay;
+		buf[SMART_CHARGE_MODE] = DELAY_MODE;
+	} else {
+		 /* No writing zero, there is a specific mode for it. */
+		buf[SMART_CHARGE_MODE] = NO_DELAY_MODE;
+	}
+}
 
 /* Smart charge */
-static ssize_t smart_charge_show(struct device *dev,
-				 struct device_attribute *attr,
-				 char *buf)
+static ssize_t smart_charge_delay_show(struct device *dev,
+				       struct device_attribute *attr,
+				       char *buf)
 {
-	struct gaokun_psy *ecbat = dev_get_drvdata(dev);
+	struct power_supply *psy = to_power_supply(dev);
+	struct gaokun_psy *ecbat = power_supply_get_drvdata(psy);
 	u8 bf[GAOKUN_SMART_CHARGE_DATA_SIZE];
 	int ret;
 
@@ -460,20 +510,27 @@ static ssize_t smart_charge_show(struct device *dev,
 	if (ret)
 		return ret;
 
-	return sysfs_emit(buf, "%d %d %d %d\n",
-			  bf[0], bf[1], bf[2], bf[3]);
+	return sysfs_emit(buf, "%d\n", get_charge_delay(bf));
 }
 
-static ssize_t smart_charge_store(struct device *dev,
-				  struct device_attribute *attr,
-				  const char *buf, size_t size)
+static ssize_t smart_charge_delay_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t size)
 {
-	struct gaokun_psy *ecbat = dev_get_drvdata(dev);
+	struct power_supply *psy = to_power_supply(dev);
+	struct gaokun_psy *ecbat = power_supply_get_drvdata(psy);
 	u8 bf[GAOKUN_SMART_CHARGE_DATA_SIZE];
+	u8 delay;
 	int ret;
 
-	if (sscanf(buf, "%hhd %hhd %hhd %hhd", bf, bf + 1, bf + 2, bf + 3) != 4)
+	if (sscanf(buf, "%hhd", &delay) != 1)
 		return -EINVAL;
+
+	ret = gaokun_ec_psy_get_smart_charge(ecbat->ec, bf);
+	if (ret)
+		return ret;
+
+	set_charge_delay(bf, delay);
 
 	ret = gaokun_ec_psy_set_smart_charge(ecbat->ec, bf);
 	if (ret)
@@ -482,12 +539,11 @@ static ssize_t smart_charge_store(struct device *dev,
 	return size;
 }
 
-static DEVICE_ATTR_RW(smart_charge);
+static DEVICE_ATTR_RW(smart_charge_delay);
 
 static struct attribute *gaokun_psy_features_attrs[] = {
-	&dev_attr_charge_control_thresholds.attr,
-	&dev_attr_smart_charge_enable.attr,
-	&dev_attr_smart_charge.attr,
+	&dev_attr_battery_adaptive_charge.attr,
+	&dev_attr_smart_charge_delay.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(gaokun_psy_features);
@@ -551,7 +607,7 @@ static int gaokun_psy_probe(struct auxiliary_device *adev,
 
 	psy_cfg.supplied_to = (char **)&gaokun_psy_bat_desc.name;
 	psy_cfg.num_supplicants = 1;
-	psy_cfg.no_wakeup_source = true;
+//	psy_cfg.no_wakeup_source = true;
 	psy_cfg.attr_grp = gaokun_psy_features_groups;
 	ecbat->bat_psy = devm_power_supply_register(dev, &gaokun_psy_bat_desc,
 						    &psy_cfg);
