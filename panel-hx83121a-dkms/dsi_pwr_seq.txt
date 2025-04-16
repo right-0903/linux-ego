@@ -1,0 +1,452 @@
+FSTATE 0 ENTER:
+
+start: 0xdf3, end: 0x1320
+Package (0x02)
+{
+	"PMICVREGVOTE",
+	Package (0x06)
+	{
+		"PPP_RESOURCE_ID_LDO3_B",
+		1,
+		0,
+		0,
+		0,
+		0
+	}
+},
+
+Package (0x02)
+{
+	"PMICVREGVOTE",
+	Package (0x06)
+	{
+		"PPP_RESOURCE_ID_LDO2_B",
+		1,
+		0,
+		0,
+		0,
+		0
+	}
+},
+
+TLMMGPIO: gpio8
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		8,
+		1,
+		0,
+		0,
+		1,
+		0
+	}
+},
+
+TLMMGPIO: gpio24
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		24,
+		1,
+		0,
+		0,
+		1,
+		0
+	}
+},
+
+TLMMGPIO: gpio20
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		20,
+		1,
+		0,
+		0,
+		1,
+		0
+	}
+},
+
+TLMMGPIO_V2: gpio1
+Package (0x03)
+{
+	"TLMMGPIO_V2",
+	2
+	Package (0x06)
+	{
+		1,
+		1,
+		0,
+		0,
+		1,
+		0
+	}
+},
+
+Package (0x02)
+{
+	"PMICGPIO",
+	Package (0x06)
+	{
+		"IOCTL_PM_GPIO_CONFIG_DIGITAL_INPUT",
+		2,
+		7,
+		5,
+		0,
+		2
+	}
+},
+
+TLMMGPIO: gpio52
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		52,
+		0,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+DELAY: delay 2 ms
+Package (0x02)
+{
+	"DELAY",
+	Package (0x01)
+	{
+		2
+	}
+},
+
+TLMMGPIO: gpio0
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		0,
+		0,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+TLMMGPIO: gpio53
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		53,
+		0,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+TLMMGPIO: gpio171
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		171,
+		0,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+TLMMGPIO: gpio172
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		172,
+		0,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+DELAY: delay 1000 ms
+Package (0x02)
+{
+	"DELAY",
+	Package (0x01)
+	{
+		1000
+	}
+},
+
+FSTATE 0 EXIT:
+
+start: 0x155b, end: 0x1b9f
+Package (0x02)
+{
+	"PMICVREGVOTE",
+	Package (0x06)
+	{
+		"PPP_RESOURCE_ID_LDO3_B", // dsi
+		1,
+		1200000,
+		1,
+		7,
+		0
+	}
+},
+
+Package (0x02)
+{
+	"PMICVREGVOTE",
+	Package (0x06)
+	{
+		"PPP_RESOURCE_ID_LDO2_B", // VDD1
+		1,
+		1800000,
+		1,
+		7,
+		0
+	}
+},
+
+TLMMGPIO: gpio8 // vsync
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		8,
+		1,
+		1,
+		0,
+		0,
+		0
+	}
+},
+
+TLMMGPIO: gpio24
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		24,
+		1,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+TLMMGPIO: gpio20
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		20,
+		1,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+TLMMGPIO_V2: gpio1
+Package (0x03)
+{
+	"TLMMGPIO_V2",
+	1
+	Package (0x06)
+	{
+		1,
+		1,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+Package (0x02)
+{
+	"PMICGPIO",
+	Package (0x06)
+	{
+		"IOCTL_PM_GPIO_CONFIG_DIGITAL_OUTPUT",
+		2,
+		7,
+		0,
+		0,
+		2
+	}
+},
+
+DELAY: delay 4 ms
+Package (0x02)
+{
+	"DELAY",
+	Package (0x01)
+	{
+		4
+	}
+},
+
+TLMMGPIO: gpio100
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		100,
+		1,
+		0,
+		1,
+		0,
+		7
+	}
+},
+
+DELAY: delay 1 ms
+Package (0x02)
+{
+	"DELAY",
+	Package (0x01)
+	{
+		1
+	}
+},
+
+TLMMGPIO: gpio171
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		171,
+		1,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+TLMMGPIO: gpio172
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		172,
+		1,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+TLMMGPIO: gpio99
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		99,
+		1,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+DELAY: delay 2 ms
+Package (0x02)
+{
+	"DELAY",
+	Package (0x01)
+	{
+		2
+	}
+},
+
+TLMMGPIO: gpio0
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		0,
+		1,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+TLMMGPIO: gpio53
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		53,
+		1,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
+DELAY: delay 4 ms
+Package (0x02)
+{
+	"DELAY",
+	Package (0x01)
+	{
+		4
+	}
+},
+
+TLMMGPIO: gpio52
+Package (0x02)
+{
+	"TLMMGPIO",
+	Package (0x06)
+	{
+		52,
+		1,
+		0,
+		1,
+		0,
+		0
+	}
+},
+
