@@ -1,5 +1,11 @@
 # Huawei Matebook E Go (8cx Gen 3)
 
+## future
+
+EOL since Apr, 2025. I don't own the device anymore.
+
+---
+
 This repository contains workarounds for the Huawei Matebook E Go (8cx Gen 3) to support Linux.
 
 This project mainly refers to the following projects:
