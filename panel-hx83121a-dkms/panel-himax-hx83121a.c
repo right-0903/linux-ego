@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Himax HX83121a DriverIC panels driver
- * Copyright (c) 2024 nuvole <mitltlatltl@gmail.com>
- *
  * based on
  * Novatek NT36523 DriverIC panels driver
  * Copyright (c) 2022, 2023 Jianhua Lu <lujianhua000@gmail.com>
@@ -32,11 +29,6 @@
 
 #define DSI_NUM_MIN 1
 
-#define mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, cmd, seq...)	\
-	do {														\
-		mipi_dsi_dcs_write_seq(dsi0, cmd, seq);					\
-		mipi_dsi_dcs_write_seq(dsi1, cmd, seq);					\
-	} while (0)
 
 struct panel_info {
 	struct drm_panel panel;
@@ -76,56 +68,53 @@ static int gaokun_csot_init_sequence(struct panel_info *pinfo)
 {
 
 	struct mipi_dsi_device *dsi0 = pinfo->dsi[0];
-	struct mipi_dsi_device *dsi1 = pinfo->dsi[1];
-	int ret, i;
+	int ret;
 
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xb9, 0x83, 0x12, 0x1a, 0x55, 0x00);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xbd, 0x00);
+	mipi_dsi_dcs_write_seq(dsi0, 0xb9, 0x83, 0x12, 0x1a, 0x55, 0x00);
+	mipi_dsi_dcs_write_seq(dsi0, 0xbd, 0x00);
 
 #ifdef XBL
-	for (i = 0; i < DSI_NUM_MIN + pinfo->desc->is_dual_dsi; i++) {
-		/* from xbl sequence */
-		ret = mipi_dsi_dcs_set_display_brightness(pinfo->dsi[i], 0x0008); // 39 51 08 00
-		if (ret < 0) {
-			dev_err(&pinfo->dsi[i]->dev, "Failed to set display brightness: %d\n", ret);
-			return ret;
-		}
+	/* from xbl sequence */
+	ret = mipi_dsi_dcs_set_display_brightness(pinfo->dsi[0], 0x0008); // 39 51 08 00
+	if (ret < 0) {
+		dev_err(&pinfo->dsi[0]->dev, "Failed to set display brightness: %d\n", ret);
+		return ret;
 	}
 #endif
 
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, MIPI_DCS_WRITE_CONTROL_DISPLAY, 0x24); // 39 53 24
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xb1,
+	mipi_dsi_dcs_write_seq(dsi0, MIPI_DCS_WRITE_CONTROL_DISPLAY, 0x24); // 39 53 24
+	mipi_dsi_dcs_write_seq(dsi0, 0xb1,
 			       0x1c, 0x6b, 0x6b, 0x27, 0xe7, 0x00, 0x1b, 0x25,
 			       0x21, 0x21, 0x2d, 0x2d, 0x17, 0x33, 0x31, 0x40,
 			       0xcd, 0xff, 0x1a, 0x05, 0x15, 0x98, 0x00, 0x88,
 			       0x7f, 0xff, 0xff, 0xcf, 0x1a, 0xcc, 0x02, 0x00);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xd1, 0x37, 0x03, 0x0c, 0xfd);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xb2,
+	mipi_dsi_dcs_write_seq(dsi0, 0xd1, 0x37, 0x03, 0x0c, 0xfd);
+	mipi_dsi_dcs_write_seq(dsi0, 0xb2,
 			       0x00, 0x6a, 0x40, 0x00, 0x00, 0x14, 0x98, 0x60,
 			       0x3c, 0x02, 0x80, 0x21, 0x21, 0x00, 0x00, 0xf0,
 			       0x27);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xe2, 0x10);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xc0, 0x23, 0x23, 0xcc, 0x22, 0x99, 0xd8);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xb4,
+	mipi_dsi_dcs_write_seq(dsi0, 0xe2, 0x10);
+	mipi_dsi_dcs_write_seq(dsi0, 0xc0, 0x23, 0x23, 0xcc, 0x22, 0x99, 0xd8);
+	mipi_dsi_dcs_write_seq(dsi0, 0xb4,
 			       0x46, 0x06, 0x0c, 0xbe, 0x0c, 0xbe, 0x09, 0x46,
 			       0x0f, 0x57, 0x0f, 0x57, 0x03, 0x4a, 0x00, 0x00,
 			       0x04, 0x0c, 0x00, 0x18, 0x01, 0x06, 0x08, 0x00,
 			       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			       0x00, 0x00, 0xff, 0x00, 0xff, 0x10, 0x00, 0x02,
 			       0x14, 0x14, 0x14, 0x14);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xbd, 0x03);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xe1, 0x01, 0x3f);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xbd, 0x00);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xe9, 0xe2);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xe7, 0x49);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xe9, 0x3f);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xd3,
+	mipi_dsi_dcs_write_seq(dsi0, 0xbd, 0x03);
+	mipi_dsi_dcs_write_seq(dsi0, 0xe1, 0x01, 0x3f);
+	mipi_dsi_dcs_write_seq(dsi0, 0xbd, 0x00);
+	mipi_dsi_dcs_write_seq(dsi0, 0xe9, 0xe2);
+	mipi_dsi_dcs_write_seq(dsi0, 0xe7, 0x49);
+	mipi_dsi_dcs_write_seq(dsi0, 0xe9, 0x3f);
+	mipi_dsi_dcs_write_seq(dsi0, 0xd3,
 			       0x00, 0xc0, 0x08, 0x08, 0x08, 0x04, 0x04, 0x04,
 			       0x16, 0x02, 0x07, 0x07, 0x07, 0x31, 0x13, 0x19,
 			       0x12, 0x12, 0x03, 0x03, 0x03, 0x32, 0x10, 0x18,
 			       0x00, 0x11, 0x32, 0x10, 0x03, 0x00, 0x03, 0x32,
 			       0x10, 0x03, 0x00, 0x03, 0x00, 0x00, 0xff, 0x00);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xe1,
+	mipi_dsi_dcs_write_seq(dsi0, 0xe1,
 			       0x11, 0x00, 0x00, 0x89, 0x30, 0x80, 0x0a, 0x00,
 			       0x03, 0x20, 0x00, 0x14, 0x03, 0x20, 0x03, 0x20,
 			       0x02, 0x00, 0x02, 0x91, 0x00, 0x20, 0x02, 0x47,
@@ -134,94 +123,87 @@ static int gaokun_csot_init_sequence(struct panel_info *pinfo)
 			       0x06, 0x0b, 0x0b, 0x33, 0x0e, 0x1c, 0x2a, 0x38,
 			       0x46, 0x54, 0x62, 0x69, 0x70, 0x77, 0x79, 0x7b,
 			       0x7d, 0x7e, 0x01, 0x02, 0x01, 0x00, 0x09);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xe7,
+	mipi_dsi_dcs_write_seq(dsi0, 0xe7,
 			       0x17, 0x08, 0x08, 0x2c, 0x46, 0x1e, 0x02, 0x23,
 			       0x5d, 0x02, 0xc9, 0x00, 0x00, 0x00, 0x00, 0x12,
 			       0x05, 0x02, 0x02, 0x07, 0x10, 0x10, 0x00, 0x1d,
 			       0xb9, 0x23, 0xb9, 0x00, 0x33, 0x02, 0x88);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xbd, 0x01);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xe7,
+	mipi_dsi_dcs_write_seq(dsi0, 0xbd, 0x01);
+	mipi_dsi_dcs_write_seq(dsi0, 0xe7,
 			       0x02, 0x00, 0xb2, 0x01, 0x56, 0x07, 0x56, 0x08,
 			       0x48, 0x14, 0xfd, 0x26);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xbd, 0x02);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xe7,
+	mipi_dsi_dcs_write_seq(dsi0, 0xbd, 0x02);
+	mipi_dsi_dcs_write_seq(dsi0, 0xe7,
 			       0x08, 0x08, 0x01, 0x03, 0x01, 0x03, 0x07, 0x02,
 			       0x02, 0x47, 0x00, 0x47, 0x81, 0x02, 0x40, 0x00,
 			       0x18, 0x4a, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
 			       0x00, 0x00, 0x03, 0x02, 0x01, 0x00, 0x00, 0x00,
 			       0x00, 0x00);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xbd, 0x00);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xbf,
+	mipi_dsi_dcs_write_seq(dsi0, 0xbd, 0x00);
+	mipi_dsi_dcs_write_seq(dsi0, 0xbf,
 			       0xfd, 0x00, 0x80, 0x9c, 0x36, 0x00, 0x81, 0x0c);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xcd,
+	mipi_dsi_dcs_write_seq(dsi0, 0xcd,
 			       0x81, 0x00, 0x80, 0x77, 0x00, 0x01, 0x00);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xbd, 0x01);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xe4,
+	mipi_dsi_dcs_write_seq(dsi0, 0xbd, 0x01);
+	mipi_dsi_dcs_write_seq(dsi0, 0xe4,
 			       0xe1, 0xe1, 0xe1, 0xe1, 0xe1, 0xe1, 0xe1, 0xe1,
 			       0xc7, 0xb2, 0xa0, 0x90, 0x81, 0x75, 0x69, 0x5f,
 			       0x55, 0x4c, 0x44, 0x3d, 0x36, 0x2f, 0x2a, 0x24,
 			       0x1e, 0x19, 0x14, 0x10, 0x09, 0x08, 0x07, 0x54,
 			       0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xbd, 0x03);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xe4,
+	mipi_dsi_dcs_write_seq(dsi0, 0xbd, 0x03);
+	mipi_dsi_dcs_write_seq(dsi0, 0xe4,
 			       0xaa, 0xd4, 0xff, 0x2a, 0x55, 0x7f, 0xaa, 0xd4,
 			       0xff, 0xea, 0xff, 0x03);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xbd, 0x00);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xbe, 0x01, 0x35, 0x00);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xd9, 0x5f);
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, 0xb9, 0x00, 0x00, 0x00);
+	mipi_dsi_dcs_write_seq(dsi0, 0xbd, 0x00);
+	mipi_dsi_dcs_write_seq(dsi0, 0xbe, 0x01, 0x35, 0x00);
+	mipi_dsi_dcs_write_seq(dsi0, 0xd9, 0x5f);
+	mipi_dsi_dcs_write_seq(dsi0, 0xb9, 0x00, 0x00, 0x00);
 
 
-	for (i = 0; i < DSI_NUM_MIN + pinfo->desc->is_dual_dsi; i++) {
-		ret = mipi_dsi_dcs_exit_sleep_mode(pinfo->dsi[i]); // 05 11 00
-		if (ret < 0) {
-			dev_err(&pinfo->dsi[i]->dev, "Failed to exit sleep mode: %d\n", ret);
-			return ret;
-		}
+
+	ret = mipi_dsi_dcs_exit_sleep_mode(pinfo->dsi[0]); // 05 11 00
+	if (ret < 0) {
+		dev_err(&pinfo->dsi[0]->dev, "Failed to exit sleep mode: %d\n", ret);
+		return ret;
 	}
 	msleep(140); // ff 8c
 
 
 #ifdef XBL
-	for (i = 0; i < DSI_NUM_MIN + pinfo->desc->is_dual_dsi; i++) {
-		ret = mipi_dsi_dcs_enter_sleep_mode(pinfo->dsi[i]); // 05 10 00
-		if (ret < 0) {
-			dev_err(&pinfo->dsi[i]->dev, "Failed to enter sleep mode: %d\n", ret);
-			return ret;
-		}
+	ret = mipi_dsi_dcs_enter_sleep_mode(pinfo->dsi[0]); // 05 10 00
+	if (ret < 0) {
+		dev_err(&pinfo->dsi[0]->dev, "Failed to enter sleep mode: %d\n", ret);
+		return ret;
 	}
+
 	msleep(120); // ff 78
 
-	for (i = 0; i < DSI_NUM_MIN + pinfo->desc->is_dual_dsi; i++) {
-		ret = mipi_dsi_dcs_exit_sleep_mode(pinfo->dsi[i]); // 05 11 00
-		if (ret < 0) {
-			dev_err(&pinfo->dsi[i]->dev, "Failed to exit sleep mode: %d\n", ret);
-			return ret;
-		}
+	ret = mipi_dsi_dcs_exit_sleep_mode(pinfo->dsi[0]); // 05 11 00
+	if (ret < 0) {
+		dev_err(&pinfo->dsi[0]->dev, "Failed to exit sleep mode: %d\n", ret);
+		return ret;
 	}
+
 	msleep(150); // ff 96
 #endif
 
-	for (i = 0; i < DSI_NUM_MIN + pinfo->desc->is_dual_dsi; i++) {
-		ret = mipi_dsi_dcs_set_display_on(pinfo->dsi[i]); // 05 29 00
-		if (ret < 0) {
-			dev_err(&pinfo->dsi[i]->dev, "Failed to set display on: %d\n", ret);
-			return ret;
-		}
+	ret = mipi_dsi_dcs_set_display_on(pinfo->dsi[0]); // 05 29 00
+	if (ret < 0) {
+		dev_err(&pinfo->dsi[0]->dev, "Failed to set display on: %d\n", ret);
+		return ret;
 	}
 
 #ifdef XBL
-	for (i = 0; i < DSI_NUM_MIN + pinfo->desc->is_dual_dsi; i++) {
-		ret = mipi_dsi_dcs_set_display_brightness(pinfo->dsi[i], 0xff04); // 39 51 04 ff
-		if (ret < 0) {
-			dev_err(&pinfo->dsi[i]->dev, "Failed to set display brightness: %d\n", ret);
-			return ret;
-		}
+	ret = mipi_dsi_dcs_set_display_brightness(pinfo->dsi[0], 0xff04); // 39 51 04 ff
+	if (ret < 0) {
+		dev_err(&pinfo->dsi[0]->dev, "Failed to set display brightness: %d\n", ret);
+		return ret;
 	}
 #endif
 
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, MIPI_DCS_WRITE_POWER_SAVE, 0x01); // 39 55 01
-	mipi_dsi_dual_dcs_write_seq(dsi0, dsi1, MIPI_DCS_WRITE_POWER_SAVE, 0x24); // 39 55 24
+	mipi_dsi_dcs_write_seq(dsi0, MIPI_DCS_WRITE_POWER_SAVE, 0x01); // 39 55 01
+	mipi_dsi_dcs_write_seq(dsi0, MIPI_DCS_WRITE_POWER_SAVE, 0x24); // 39 55 24
 	msleep(20);
 
 
@@ -355,13 +337,11 @@ static int hx83121a_disable(struct drm_panel *panel)
 {
 
 	struct panel_info *pinfo = to_panel_info(panel);
-	int i, ret;
+	int ret;
 
-	for (i = 0; i < DSI_NUM_MIN + pinfo->desc->is_dual_dsi; i++) {
-		ret = mipi_dsi_dcs_enter_sleep_mode(pinfo->dsi[i]); // 05 10 00
-		if (ret < 0)
-			dev_err(&pinfo->dsi[i]->dev, "failed to enter sleep mode: %d\n", ret);
-	}
+	ret = mipi_dsi_dcs_enter_sleep_mode(pinfo->dsi[0]); // 05 10 00
+	if (ret < 0)
+		dev_err(&pinfo->dsi[0]->dev, "failed to enter sleep mode: %d\n", ret);
 
 	msleep(120);
 
@@ -498,7 +478,7 @@ static struct backlight_device *hx83121a_create_backlight(struct mipi_dsi_device
 	};
 
 	return devm_backlight_device_register(dev, dev_name(dev), dev, dsi,
-										  &hx83121a_bl_ops, &props);
+					      &hx83121a_bl_ops, &props);
 }
 
 static int hx83121a_probe(struct mipi_dsi_device *dsi)
@@ -581,7 +561,6 @@ static int hx83121a_probe(struct mipi_dsi_device *dsi)
 	}
 
 	drm_panel_add(&pinfo->panel);
-    pr_err("%s: prepare and enable should be done\n", __func__);
 
 	pinfo->dsc.dsc_version_major = 1;
 	pinfo->dsc.dsc_version_minor = 1;
@@ -622,6 +601,5 @@ static struct mipi_dsi_driver hx83121a_driver = {
 };
 module_mipi_dsi_driver(hx83121a_driver);
 
-MODULE_AUTHOR("nuvole <mitltlatltl@gmail.com>");
 MODULE_DESCRIPTION("DRM driver for Himax HX83121a based MIPI DSI panels");
 MODULE_LICENSE("GPL");
