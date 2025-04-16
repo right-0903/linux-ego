@@ -91,6 +91,9 @@ arch-chroot ${CHROOT_DIR} sh -c 'pacman -Syu efibootmgr grub linux-firmware-qcom
 
 arch-chroot ${CHROOT_DIR} sh -c 'pacman -S linux-gaokun3 linux-gaokun3-headers linux-firmware-gaokun3 --noconfirm'
 
+# add iwd to for wifi configuration, someone reported this, btrfs-progs for people using btrfs
+arch-chroot ${CHROOT_DIR} sh -c 'pacman -S iwd btrfs-progs --noconfirm'
+
 # make a copy for this repo
 mv ${CHROOT_DIR}/var/cache/pacman/pkg/*.pkg.tar.zst .
 
