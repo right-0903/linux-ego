@@ -1,0 +1,2 @@
+this patch doesn't work, something is wrong, if you `cat /dev/*sdsp*`,
+it may trigger watchdog, then device will reboot.

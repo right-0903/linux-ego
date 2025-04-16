@@ -1,0 +1,111 @@
+From ad0993457181117c543471e7d4185d55414f1b21 Mon Sep 17 00:00:00 2001
+From: Pengyu Luo <mitltlatltl@gmail.com>
+Date: Sat, 11 Jan 2025 17:29:04 +0800
+Subject: [PATCH 3/3] arm64: dts: qcom: sc8280xp: add cpu interconnect nodes
+
+Add the interconnect entry for each cpu, with 2 different paths:
+- CPU to Last Level Cache Controller (LLCC)
+- Last Level Cache Controller (LLCC) to DDR
+
+Link: https://lore.kernel.org/linux-arm-msm/20250110-topic-sm8650-ddr-bw-scaling-v1-0-041d836b084c@linaro.org
+
+Signed-off-by: Pengyu Luo <mitltlatltl@gmail.com>
+---
+ arch/arm64/boot/dts/qcom/sc8280xp.dtsi | 32 +++++++++++++++++++-------
+ 1 file changed, 24 insertions(+), 8 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sc8280xp.dtsi b/arch/arm64/boot/dts/qcom/sc8280xp.dtsi
+index c5fc7a813..95bcedbe1 100644
+--- a/arch/arm64/boot/dts/qcom/sc8280xp.dtsi
++++ b/arch/arm64/boot/dts/qcom/sc8280xp.dtsi
+@@ -59,7 +59,9 @@ cpu0: cpu@0 {
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 0>;
+ 			operating-points-v2 = <&cpu0_opp_table>;
+-			interconnects = <&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
++			interconnects = <&gem_noc MASTER_APPSS_PROC 3 &gem_noc SLAVE_LLCC 3>,
++					<&mc_virt MASTER_LLCC 3 &mc_virt SLAVE_EBI1 3>,
++					<&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
+ 			#cooling-cells = <2>;
+ 			l2_0: l2-cache {
+ 				compatible = "cache";
+@@ -87,7 +89,9 @@ cpu1: cpu@100 {
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 0>;
+ 			operating-points-v2 = <&cpu0_opp_table>;
+-			interconnects = <&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
++			interconnects = <&gem_noc MASTER_APPSS_PROC 3 &gem_noc SLAVE_LLCC 3>,
++					<&mc_virt MASTER_LLCC 3 &mc_virt SLAVE_EBI1 3>,
++					<&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
+ 			#cooling-cells = <2>;
+ 			l2_100: l2-cache {
+ 				compatible = "cache";
+@@ -110,7 +114,9 @@ cpu2: cpu@200 {
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 0>;
+ 			operating-points-v2 = <&cpu0_opp_table>;
+-			interconnects = <&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
++			interconnects = <&gem_noc MASTER_APPSS_PROC 3 &gem_noc SLAVE_LLCC 3>,
++					<&mc_virt MASTER_LLCC 3 &mc_virt SLAVE_EBI1 3>,
++					<&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
+ 			#cooling-cells = <2>;
+ 			l2_200: l2-cache {
+ 				compatible = "cache";
+@@ -133,7 +139,9 @@ cpu3: cpu@300 {
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 0>;
+ 			operating-points-v2 = <&cpu0_opp_table>;
+-			interconnects = <&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
++			interconnects = <&gem_noc MASTER_APPSS_PROC 3 &gem_noc SLAVE_LLCC 3>,
++					<&mc_virt MASTER_LLCC 3 &mc_virt SLAVE_EBI1 3>,
++					<&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
+ 			#cooling-cells = <2>;
+ 			l2_300: l2-cache {
+ 				compatible = "cache";
+@@ -156,7 +164,9 @@ cpu4: cpu@400 {
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 1>;
+ 			operating-points-v2 = <&cpu4_opp_table>;
+-			interconnects = <&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
++			interconnects = <&gem_noc MASTER_APPSS_PROC 3 &gem_noc SLAVE_LLCC 3>,
++					<&mc_virt MASTER_LLCC 3 &mc_virt SLAVE_EBI1 3>,
++					<&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
+ 			#cooling-cells = <2>;
+ 			l2_400: l2-cache {
+ 				compatible = "cache";
+@@ -179,7 +189,9 @@ cpu5: cpu@500 {
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 1>;
+ 			operating-points-v2 = <&cpu4_opp_table>;
+-			interconnects = <&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
++			interconnects = <&gem_noc MASTER_APPSS_PROC 3 &gem_noc SLAVE_LLCC 3>,
++					<&mc_virt MASTER_LLCC 3 &mc_virt SLAVE_EBI1 3>,
++					<&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
+ 			#cooling-cells = <2>;
+ 			l2_500: l2-cache {
+ 				compatible = "cache";
+@@ -202,7 +214,9 @@ cpu6: cpu@600 {
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 1>;
+ 			operating-points-v2 = <&cpu4_opp_table>;
+-			interconnects = <&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
++			interconnects = <&gem_noc MASTER_APPSS_PROC 3 &gem_noc SLAVE_LLCC 3>,
++					<&mc_virt MASTER_LLCC 3 &mc_virt SLAVE_EBI1 3>,
++					<&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
+ 			#cooling-cells = <2>;
+ 			l2_600: l2-cache {
+ 				compatible = "cache";
+@@ -225,7 +239,9 @@ cpu7: cpu@700 {
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 1>;
+ 			operating-points-v2 = <&cpu4_opp_table>;
+-			interconnects = <&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
++			interconnects = <&gem_noc MASTER_APPSS_PROC 3 &gem_noc SLAVE_LLCC 3>,
++					<&mc_virt MASTER_LLCC 3 &mc_virt SLAVE_EBI1 3>,
++					<&epss_l3 MASTER_EPSS_L3_APPS &epss_l3 SLAVE_EPSS_L3_SHARED>;
+ 			#cooling-cells = <2>;
+ 			l2_700: l2-cache {
+ 				compatible = "cache";
+-- 
+2.47.1
+
